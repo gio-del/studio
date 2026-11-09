@@ -14,9 +14,27 @@ jobs:
         with:
           node-version: 22
       - run: ./ci
+  attribution:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: node scripts/attribution.js "$BASE" "$HEAD"
   ci-ok:
     runs-on: ubuntu-latest
-    needs: [ci]
+    needs: [ci, attribution]
     if: always()
     steps:
-      - run: test "${{ needs.ci.result }}" = success
+      - run: |
+          test "${{ needs.ci.result }}" = success
+          case "${{ needs.attribution.result }}" in success|skipped) ;; *) exit 1 ;; esac
