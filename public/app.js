@@ -172,7 +172,11 @@ async function pageRipasso(main) {
 }
 
 async function pageFeedback(main) {
-  const { blocks: bl, open } = await api('/api/feedback');
+  const { blocks: bl, open, session } = await api('/api/feedback');
+  if (session && (session.url || session.name)) {
+    const nome = session.name ? `«${session.name}»` : 'del tutor';
+    main.append(h('section', { class: 'card', id: 'sessione' }, h('strong', null, 'Parla con il tutor'), h('div', null, session.url ? link(`Apri la sessione ${nome}`, session.url) : `Apri la sessione ${nome} nell'app Claude (Code).`)));
+  }
   main.append(h('h2', null, 'Segnalazioni aperte'));
   if (!open.length) main.append(h('p', { class: 'muted' }, 'Nessuna segnalazione aperta.'));
   for (const r of open) {

@@ -24,6 +24,9 @@ function readConfig(env) {
     host: env.LISTEN_HOST || '127.0.0.1',
     port: Number(env.PORT || 8080),
     studioDir: path.resolve(env.STUDIO_DIR),
+    // Facoltativi: dove aprire la sessione del tutor (URL http(s) o solo il nome); nessun valore nel repo.
+    sessionUrl: /^https?:\/\/\S+$/i.test(env.STUDIO_SESSION_URL || '') ? env.STUDIO_SESSION_URL : null,
+    sessionName: (env.STUDIO_SESSION_NAME || '').trim().slice(0, 60) || null,
     user: env.AUTH_USER || 'studio',
     password,
   };
@@ -100,7 +103,7 @@ function createServer({ config, now = Date.now }) {
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche() });
     if (p === '/api/lacune') return send(res, 200, await data.gaps());
     if (p === '/api/progress') return send(res, 200, await data.progress());
-    if (p === '/api/feedback') return send(res, 200, await data.feedback());
+    if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), session: { url: config.sessionUrl || null, name: config.sessionName || null } });
     const m = /^\/api\/area\/([A-Za-z0-9_-]+)$/.exec(p);
     if (m) { const a = await data.area(m[1]); return a ? send(res, 200, a) : send(res, 404, { error: 'Area sconosciuta' }); }
     return send(res, 404, { error: 'Non trovato' });
