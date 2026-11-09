@@ -4,22 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Studio</title>
-<meta name="theme-color" content="#1f3a5f">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f3faf8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0c1614" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
-<header class="top" id="top" hidden>
-  <h1>Studio</h1>
-  <nav id="nav" aria-label="Sezioni">
-    <a href="#/oggi" data-page="oggi">Oggi</a>
-    <a href="#/risorse" data-page="risorse">Risorse</a>
-    <a href="#/progressi" data-page="progressi">Progressi</a>
-    <a href="#/verifiche" data-page="verifiche">Verifiche</a>
-    <a href="#/ripasso" data-page="ripasso">Da ripassare</a>
-    <a href="#/feedback" data-page="feedback">Feedback</a>
-  </nav>
-</header>
-<main id="main"></main>
+<a class="skip" href="#main">Vai al contenuto</a>
+<main id="main" tabindex="-1"></main>
+<nav id="nav" class="tabs" aria-label="Sezioni" hidden></nav>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <script src="/app.js"></script>
 </body>

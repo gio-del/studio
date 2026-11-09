@@ -7,9 +7,13 @@ const { createData } = require('./lib/data');
 const P = require('./lib/parser');
 
 const MAX_BODY = 4096;
-const FILES = { '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'] };
+const FILES = {
+  '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'],
+  '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json; charset=utf-8'], '/icon.svg': ['icon.svg', 'image/svg+xml'],
+  '/icon-180.png': ['icon-180.png', 'image/png'], '/icon-192.png': ['icon-192.png', 'image/png'], '/icon-512.png': ['icon-512.png', 'image/png'],
+};
 const HEADERS = {
-  'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
   'cache-control': 'no-store',
@@ -98,12 +102,13 @@ function createServer({ config, now = Date.now }) {
     }
     if (req.method === 'POST' && p === '/api/segnala') return segnala(req, res);
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
-    if (p === '/api/overview') return send(res, 200, await data.overview());
+    const session = { url: config.sessionUrl || null, name: config.sessionName || null };
+    if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });
     if (p === '/api/resources') return send(res, 200, await data.resources());
-    if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche() });
-    if (p === '/api/lacune') return send(res, 200, await data.gaps());
-    if (p === '/api/progress') return send(res, 200, await data.progress());
-    if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), session: { url: config.sessionUrl || null, name: config.sessionName || null } });
+    if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
+    if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });
+    if (p === '/api/progress') return send(res, 200, { ...(await data.progress()), titles: await data.titles() });
+    if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), titles: await data.titles(), session });
     const m = /^\/api\/area\/([A-Za-z0-9_-]+)$/.exec(p);
     if (m) { const a = await data.area(m[1]); return a ? send(res, 200, a) : send(res, 404, { error: 'Area sconosciuta' }); }
     return send(res, 404, { error: 'Non trovato' });
