@@ -1,0 +1,72 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert');
+const P = require('../lib/parser');
+
+const SRC = `Intro
+
+## Parte 1: Basi
+Obiettivo: o1
+Verifica finale: v1
+
+### Settimana 1
+- [x] uno (risorsa: [R](https://e.com/x), 2 h)
+- [ ] due (risorsa: [Cat](javascript:alert(1)), 1 h)
+- [ ] tre (risorsa: Solo testo, 30 min)
+- [ ] quattro
+nota
+
+### Settimana 2
+- [ ] cinque
+`;
+
+test('parser: parti, settimane, passi, risorse e tempo', () => {
+  const p = P.parseProgram(SRC);
+  assert.strictEqual(p.intro, 'Intro');
+  assert.strictEqual(p.parts.length, 1);
+  const part = p.parts[0];
+  assert.deepStrictEqual([part.n, part.title, part.objective, part.verification], [1, 'Basi', 'o1', 'v1']);
+  const [s1, s2, s3, s4] = part.weeks[0].steps;
+  assert.deepStrictEqual([s1.done, s1.text, s1.resource, s1.time], [true, 'uno', { title: 'R', url: 'https://e.com/x' }, '2 h']);
+  assert.strictEqual(s2.resource.url, null, 'javascript: non è un link');
+  assert.deepStrictEqual([s3.resource, s3.time], [{ title: 'Solo testo', url: null }, '30 min']);
+  assert.deepStrictEqual([s4.resource, s4.text], [null, 'quattro']);
+  assert.deepStrictEqual(part.weeks[0].notes, ['nota']);
+});
+
+test('summarize: avanzamento e prossimo passo', () => {
+  const s = P.summarize(P.parseProgram(SRC));
+  assert.deepStrictEqual([s.done, s.total, s.part.n, s.week, s.next.text], [1, 5, 1, 1, 'due']);
+  const fatto = P.summarize(P.parseProgram('## Parte 1: a\n### Settimana 1\n- [x] a\n'));
+  assert.deepStrictEqual([fatto.done, fatto.total, fatto.next], [1, 1, null]);
+});
+
+test('parser: file fuori formato non lancia e non inventa', () => {
+  for (const junk of ['', null, undefined, '\u0000\u0001', '### Settimana 1\n- [ ] x', '## Parte x\n', '- [ ]', 'a'.repeat(100000)]) {
+    assert.doesNotThrow(() => P.summarize(P.parseProgram(junk)));
+  }
+  assert.strictEqual(P.summarize(P.parseProgram('solo testo')).total, 0);
+});
+
+test('safeUrl: solo http(s)', () => {
+  assert.strictEqual(P.safeUrl('https://example.com/a'), 'https://example.com/a');
+  assert.strictEqual(P.safeUrl('http://example.com'), 'http://example.com/');
+  for (const bad of ['javascript:alert(1)', 'data:text/html,x', 'JaVaScRiPt:1', '//example.com', 'ftp://x', 'https://a b', '', null]) assert.strictEqual(P.safeUrl(bad), null, String(bad));
+});
+
+test('progressi e segnalazioni: righe giuste e sbagliate', () => {
+  const rows = P.parseProgress('- 2026-11-02 | algo | passo | 8/10 | lacuna | con barra\nstrana\n');
+  assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra' });
+  assert.deepStrictEqual(rows[1], { raw: 'strana' });
+  const rep = P.parseReports('- 2026-11-09 12:00 | algo | manca | testo | con barra\nqualcosa\n');
+  assert.deepStrictEqual(rep[0], { date: '2026-11-09 12:00', area: 'algo', type: 'manca', text: 'testo | con barra' });
+  assert.deepStrictEqual(rep[1], { raw: 'qualcosa' });
+});
+
+test('reportLine: a capo e | neutralizzati, lunghezza limitata', () => {
+  const l = P.reportLine({ date: '2026-11-09 12:00', area: 'a', type: 'altro', text: 'riga1\nriga2 | x\r\n- 2026-01-01 00:00 | falsa | manca | y' });
+  assert.ok(!l.includes('\n'));
+  assert.strictEqual(P.parseReports(l).length, 1);
+  assert.strictEqual(P.parseReports(l)[0].type, 'altro');
+  assert.ok(P.reportLine({ date: 'd', area: 'a', type: 't', text: 'x'.repeat(2000) }).length < 600);
+});
