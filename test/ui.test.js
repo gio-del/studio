@@ -10,7 +10,7 @@ const path = require('node:path');
 const { createServer, readConfig } = require('../server');
 const { makeFixture } = require('./fixture');
 
-const has = (b) => { try { execFileSync('sh', ['-c', `command -v ${b}`], { stdio: 'ignore' }); return true; } catch { return false; } };
+const has = (b) => { try { execFileSync(b, ["--version"], { stdio: "ignore", timeout: 20000 }); return true; } catch { return false; } };
 const CHROME = ['chromium', 'chromium-browser', 'google-chrome'].find(has);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
