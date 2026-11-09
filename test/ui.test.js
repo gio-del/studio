@@ -36,7 +36,12 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const dport = 20000 + Math.floor(Math.random() * 20000);
   const chrome = spawn(CHROME, ['--headless', '--no-sandbox', '--disable-gpu', '--disable-dev-shm-usage', '--no-first-run', `--remote-debugging-port=${dport}`,
     '--remote-debugging-address=127.0.0.1', `--user-data-dir=${path.join(tmp, 'chrome')}`, 'about:blank'], { stdio: 'ignore' });
-  t.after(() => { chrome.kill('SIGKILL'); server.close(); fs.rmSync(dir, { recursive: true, force: true }); fs.rmSync(tmp, { recursive: true, force: true }); });
+  t.after(async () => {
+    const gone = new Promise((r) => chrome.once("exit", r));
+    chrome.kill("SIGKILL"); await gone; server.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+  });
   await waitHttp(`http://127.0.0.1:${dport}/json/version`, 60000);
   const page = (await (await fetch(`http://127.0.0.1:${dport}/json/list`)).json()).find((x) => x.type === 'page');
   const c = cdp(page.webSocketDebuggerUrl);
