@@ -70,3 +70,21 @@ test('reportLine: a capo e | neutralizzati, lunghezza limitata', () => {
   assert.strictEqual(P.parseReports(l)[0].type, 'altro');
   assert.ok(P.reportLine({ date: 'd', area: 'a', type: 't', text: 'x'.repeat(2000) }).length < 600);
 });
+
+test('verifiche: sezioni, tipo, lacune aperte e chiuse, testo strano', () => {
+  const v = P.parseVerifiche(require('./fixture').VERIFICHE);
+  assert.strictEqual(v.length, 3);
+  assert.strictEqual(v[0].kind, 'sessione');
+  assert.strictEqual(v[1].kind, 'fine');
+  assert.deepStrictEqual(v[1].questions, ['analizza tre funzioni', 'esercizio da colloquio']);
+  assert.deepStrictEqual(v[0].gaps.map((g) => g.open), [true, false]);
+  assert.strictEqual(v[0].outcome, 'parziale, <b>serve ripasso</b>');
+  assert.strictEqual(v[2].outcome, 'ok testo libero strano');
+});
+
+test('verifiche: file vuoto, senza titoli o fuori formato non lanciano', () => {
+  assert.deepStrictEqual(P.parseVerifiche(''), []);
+  assert.deepStrictEqual(P.parseVerifiche(undefined), []);
+  assert.deepStrictEqual(P.parseVerifiche('niente titoli\n- [ ] orfana\n## data | x\n'), []);
+  assert.strictEqual(P.parseVerifiche('## 2026-01-01 |\nEsito:\n').length, 1);
+});

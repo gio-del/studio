@@ -97,6 +97,8 @@ function createServer({ config, now = Date.now }) {
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     if (p === '/api/overview') return send(res, 200, await data.overview());
     if (p === '/api/resources') return send(res, 200, await data.resources());
+    if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche() });
+    if (p === '/api/lacune') return send(res, 200, await data.gaps());
     if (p === '/api/progress') return send(res, 200, await data.progress());
     if (p === '/api/feedback') return send(res, 200, await data.feedback());
     const m = /^\/api\/area\/([A-Za-z0-9_-]+)$/.exec(p);
