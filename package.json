@@ -1,0 +1,7 @@
+{
+  "name": "studio",
+  "private": true,
+  "description": "Il programma di studio: vedi i passi, segnala cosa non va",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node server.js", "test": "node --test test/*.test.js" }
+}
