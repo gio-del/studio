@@ -79,7 +79,7 @@ test('verifiche: sezioni, tipo, lacune aperte e chiuse, testo strano', () => {
   assert.deepStrictEqual(v[1].questions, ['analizza tre funzioni', 'esercizio da colloquio']);
   assert.deepStrictEqual(v[0].gaps.map((g) => g.open), [true, false]);
   assert.strictEqual(v[0].outcome, 'parziale, <b>serve ripasso</b>');
-  assert.deepStrictEqual(v[2].notes, ['testo libero strano']);
+  assert.strictEqual(v[2].outcome, 'ok testo libero strano');
 });
 
 test('verifiche: file vuoto, senza titoli o fuori formato non lanciano', () => {
