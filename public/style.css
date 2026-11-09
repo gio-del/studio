@@ -39,3 +39,6 @@ form.report .row { display: flex; gap: 8px; margin-top: 8px; }
 .login { max-width: 360px; margin: 40px auto; }
 .tag { display: inline-block; padding: 0 8px; border-radius: 10px; background: var(--accent-soft); color: var(--accent); font-size: .85rem; }
 @media (prefers-reduced-motion: no-preference) { .bar > span { transition: width .3s; } }
+.card.big { border-left: 4px solid var(--accent); }
+ul.plain { margin: 6px 0; padding-left: 20px; }
+a.gaplink { min-height: 44px; display: inline-flex; align-items: center; }

@@ -105,6 +105,53 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelector("form.report .error").textContent.length > 0', 'errore testo vuoto');
   assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1);
 
+  // Verifiche e Da ripassare (dati finti con HTML ostile)
+  await go('#/verifiche');
+  await waitFor('!!document.querySelector("main section.card")', 'verifiche');
+  const ver = await ev('document.querySelector("main").innerText');
+  assert.match(ver, /Fine parte/);
+  assert.match(ver, /Esito: superata/);
+  assert.match(ver, /<b>serve ripasso<\/b>/, 'HTML nei file solo come testo');
+  assert.strictEqual(await ev('document.querySelectorAll("main b, main script").length'), 0);
+  await noOverflow('verifiche');
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main section.card").length === 2', 'ripasso');
+  const rip = await ev('document.querySelector("main").innerText');
+  assert.ok(rip.indexOf('ricorsione') < rip.indexOf('hash map'), 'la più vecchia in alto');
+  assert.match(rip, /<script>alert\(1\)<\/script>/);
+  assert.doesNotMatch(rip, /notazione O grande/, 'le lacune chiuse non compaiono');
+  assert.strictEqual(await ev('document.querySelectorAll("main script").length'), 0);
+  await noOverflow('ripasso');
+  assert.strictEqual(await ev('document.querySelector("#nav a[aria-current=page]").textContent), 'Da ripassare');
+  await go('#/oggi');
+  await waitFor('!!document.querySelector("a.gaplink")', 'lacune su Oggi');
+  assert.match(await ev('document.querySelector("a.gaplink").textContent'), /2 lacune aperte/);
+  assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);
+
+  // Verifiche e Da ripassare (dati finti con HTML ostile)
+  await go('#/verifiche');
+  await waitFor('!!document.querySelector("main section.card")', 'verifiche');
+  const ver = await ev('document.querySelector("main").innerText');
+  assert.match(ver, /Fine parte/);
+  assert.match(ver, /Esito: superata/);
+  assert.match(ver, /<b>serve ripasso<\/b>/, 'HTML nei file solo come testo');
+  assert.strictEqual(await ev('document.querySelectorAll("main b, main script").length'), 0);
+  await noOverflow('verifiche');
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main section.card").length === 2', 'ripasso');
+  const rip = await ev('document.querySelector("main").innerText');
+  assert.ok(rip.indexOf('ricorsione') < rip.indexOf('hash map'), 'la più vecchia in alto');
+  assert.match(rip, /<script>alert\(1\)<\/script>/);
+  assert.doesNotMatch(rip, /notazione O grande/, 'le lacune chiuse non compaiono');
+  assert.strictEqual(await ev('document.querySelectorAll("main script").length'), 0);
+  await noOverflow('ripasso');
+  assert.strictEqual(await ev('document.querySelector("#nav a[aria-current=page]").textContent'), 'Da ripassare');
+  await go('#/oggi');
+  await waitFor('!!document.querySelector("a.gaplink")', 'lacune su Oggi');
+  assert.match(await ev('document.querySelector("a.gaplink").textContent'), /2 lacune aperte/);
+  assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);
+  await noOverflow('oggi con lacune');
+
   // Altre pagine
   for (const [hash, probe, text] of [['#/risorse', 'main section.card', /Awesome/], ['#/progressi', 'main section.card', /Notazione O grande/], ['#/feedback', 'main section.card', /serve|spiegazione poco chiara/]]) {
     await go(hash);

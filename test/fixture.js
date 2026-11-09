@@ -35,7 +35,27 @@ function makeFixture() {
   fs.writeFileSync(path.join(dir, 'programma', 'non valida.md'), 'x');
   fs.writeFileSync(path.join(dir, 'risorse', 'algoritmi.md'), '# Fonti\n- [Awesome](https://example.com/a) perché sì\n- [Brutto](javascript:alert(1)) no\n');
   fs.writeFileSync(path.join(dir, 'progressi.md'), PROG);
+  fs.writeFileSync(path.join(dir, 'verifiche.md'), module.exports.VERIFICHE);
   fs.writeFileSync(path.join(dir, 'feedback.md'), '- 2026-11-04: aggiunta la parte 3 <script>x</script>\n');
   return dir;
 }
 module.exports = { makeFixture };
+module.exports.VERIFICHE = `## 2026-11-05 | algoritmi | Parte 1 | sessione
+Domande: complessità di un ciclo doppio
+Esito: parziale, <b>serve ripasso</b>
+Lacune:
+- [ ] ricorsione <script>alert(1)</script>
+- [x] notazione O grande
+
+## 2026-11-08 | algoritmi | Parte 1 | fine parte
+Domande:
+- analizza tre funzioni
+- esercizio da colloquio
+Esito: superata
+Lacune:
+- [ ] hash map e collisioni
+
+## 2026-11-03 | sistemi | Parte 1 | sessione
+Esito: ok
+testo libero strano
+`;

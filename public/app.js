@@ -82,6 +82,7 @@ async function pageOggi(main) {
       bar(a.done, a.total),
       h('div', { class: 'muted' }, `${a.done} passi fatti su ${a.total}`),
       a.part ? h('div', null, `Parte ${a.part.n}: ${a.part.title} · settimana ${a.week}`) : h('div', null, a.total ? 'Programma completato' : 'Nessun passo'),
+      a.gaps ? h('div', null, h('a', { class: 'gaplink', href: '#/ripasso' }, `${a.gaps} ${a.gaps === 1 ? 'lacuna aperta' : 'lacune aperte'}`)) : null,
       next ? h('div', null, h('strong', null, 'Prossimo: '), next.text) : null,
       next ? resourceLine(next) : null));
   }
@@ -141,6 +142,35 @@ async function pageProgressi(main) {
   }
 }
 
+async function pageVerifiche(main) {
+  const { rows } = await api('/api/verifiche');
+  main.append(h('h2', null, 'Verifiche'));
+  if (!rows.length) main.append(h('p', { class: 'muted' }, 'Nessuna verifica registrata.'));
+  const areas = [...new Set(rows.map((r) => r.area))];
+  for (const area of areas) {
+    main.append(h('h3', null, area || '(senza area)'));
+    for (const r of rows.filter((x) => x.area === area)) {
+      const open = r.gaps.filter((g) => g.open);
+      main.append(h('section', { class: 'card' + (r.kind === 'fine' ? ' big' : '') },
+        h('strong', null, r.date), ' ', h('span', { class: 'tag' }, r.kind === 'fine' ? 'Fine parte' : 'Sessione'),
+        r.part ? [' ', h('span', { class: 'tag' }, r.part)] : null,
+        r.outcome ? h('div', null, `Esito: ${r.outcome}`) : null,
+        r.questions.length ? h('ul', { class: 'plain' }, r.questions.map((q) => h('li', null, q))) : null,
+        r.gaps.length ? h('div', { class: 'muted' }, `Lacune: ${open.length} aperte su ${r.gaps.length}`) : null));
+    }
+  }
+}
+
+async function pageRipasso(main) {
+  const { gaps } = await api('/api/lacune');
+  main.append(h('h2', null, 'Da ripassare'));
+  if (!gaps.length) main.append(h('p', { class: 'muted' }, 'Nessuna lacuna aperta.'));
+  for (const g of gaps) {
+    main.append(h('section', { class: 'card' }, h('strong', null, g.date), ' ', h('span', { class: 'tag' }, g.area),
+      g.part ? [' ', h('span', { class: 'tag' }, g.part)] : null, h('div', null, g.text)));
+  }
+}
+
 async function pageFeedback(main) {
   const { blocks: bl, open } = await api('/api/feedback');
   main.append(h('h2', null, 'Segnalazioni aperte'));
@@ -178,6 +208,8 @@ async function route() {
     if (page === 'area') await pageArea(main, decodeURIComponent(arg || ''));
     else if (page === 'risorse') await pageRisorse(main);
     else if (page === 'progressi') await pageProgressi(main);
+    else if (page === 'verifiche') await pageVerifiche(main);
+    else if (page === 'ripasso') await pageRipasso(main);
     else if (page === 'feedback') await pageFeedback(main);
     else await pageOggi(main);
   } catch (e) {

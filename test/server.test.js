@@ -26,7 +26,7 @@ test('configurazione: serve password e cartella, ascolta in locale', () => {
 
 test('senza login niente dati; password sbagliata rifiutata', async (t) => {
   const { call } = await start(t);
-  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback']) assert.strictEqual((await call('GET', p)).status, 401, p);
+  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback', '/api/verifiche', '/api/lacune']) assert.strictEqual((await call('GET', p)).status, 401, p);
   assert.strictEqual((await call('POST', '/api/segnala', { area: 'algoritmi', type: 'altro', text: 'x' })).status, 401);
   assert.strictEqual((await call('POST', '/api/login', { user: 'studio', password: 'no' })).status, 401);
 });
@@ -109,4 +109,26 @@ test('segnalazioni in parallelo: nessuna riga persa, nessun altro file scritto',
   const lines = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
   assert.strictEqual(lines.length, 12);
   assert.deepStrictEqual(fs.readdirSync(dir).sort(), [...before, 'segnalazioni.md'].sort());
+});
+
+test('verifiche e lacune: storico, lacune aperte dalla più vecchia, conteggio per area', async (t) => {
+  const { call, login } = await start(t);
+  const ck = await login();
+  const v = await (await call('GET', '/api/verifiche', null, ck)).json();
+  assert.strictEqual(v.rows.length, 3);
+  const l = await (await call('GET', '/api/lacune', null, ck)).json();
+  assert.deepStrictEqual(l.gaps.map((g) => g.date), ['2026-11-05', '2026-11-08']);
+  assert.deepStrictEqual(l.perArea, { algoritmi: 2 });
+  const o = await (await call('GET', '/api/overview', null, ck)).json();
+  assert.strictEqual(o.areas.find((a) => a.area === 'algoritmi').gaps, 2);
+  assert.strictEqual(o.areas.find((a) => a.area === 'sistemi').gaps, 0);
+  assert.strictEqual((await call('POST', '/api/lacune', {}, ck)).status, 405);
+});
+
+test('senza verifiche.md le pagine rispondono vuote', async (t) => {
+  const { call, login, dir } = await start(t);
+  fs.rmSync(path.join(dir, 'verifiche.md'));
+  const ck = await login();
+  assert.deepStrictEqual((await (await call('GET', '/api/verifiche', null, ck)).json()).rows, []);
+  assert.deepStrictEqual((await (await call('GET', '/api/lacune', null, ck)).json()).gaps, []);
 });
