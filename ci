@@ -1,27 +1,21 @@
-#!/usr/bin/env bash
-# Contratto CI dei Projects: ./ci [sezione...]; senza argomenti esegue tutto.
-# Esce con errore al primo controllo fallito. Nessun segreto.
-set -euo pipefail
+#!/bin/sh
+# CI del Project (contratto ./ci [sezione…], nessun argomento = tutto): nessun segreto, nessuna rete,
+# esce al primo controllo fallito.
+#   backend   sintassi e test (parser, server, sicurezza, interfaccia se c'è Chromium)
+set -eu
 cd "$(dirname "$0")"
 
-sections=("$@")
-[ ${#sections[@]} -gt 0 ] || sections=(repo)
-
-repo() {
-  echo "== repo =="
-  [ -f README.md ] || { echo "README.md mancante" >&2; exit 1; }
-  [ -x ci ] || { echo "./ci non eseguibile" >&2; exit 1; }
-  # .hs-tools: righe NOME VERSIONE PIATTAFORMA SHA256 URL
-  if [ -f .hs-tools ]; then
-    awk '!/^[[:space:]]*(#|$)/ && (NF != 5 || $5 !~ /^https:\/\// || $4 !~ /^[0-9a-f]{64}$/) \
-      { print ".hs-tools riga " NR " non valida" > "/dev/stderr"; bad=1 } END { exit bad }' .hs-tools
-  fi
+backend() {
+	for f in server.js lib/*.js public/*.js; do
+		[ -f "$f" ] && node --check "$f"
+	done
+	node --test test/*.test.js
 }
 
-for s in "${sections[@]}"; do
-  case "$s" in
-    repo) repo ;;
-    *) echo "sezione sconosciuta: $s" >&2; exit 2 ;;
-  esac
+[ $# -gt 0 ] || set -- backend
+for section in "$@"; do
+	case $section in
+	backend) echo "== ./ci $section" && "$section" ;;
+	*) echo "./ci: sezione sconosciuta '$section' (backend)" >&2 && exit 2 ;;
+	esac
 done
-echo "ci: ok"
