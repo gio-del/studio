@@ -88,3 +88,17 @@ test('verifiche: file vuoto, senza titoli o fuori formato non lanciano', () => {
   assert.deepStrictEqual(P.parseVerifiche('niente titoli\n- [ ] orfana\n## data | x\n'), []);
   assert.strictEqual(P.parseVerifiche('## 2026-01-01 |\nEsito:\n').length, 1);
 });
+
+test('nome leggibile dell\'area: titolo in cima al file, altrimenti dal nome del file', () => {
+  assert.strictEqual(P.parseProgram('# LLM e RAG\nintro\n## Parte 1: a\n').title, 'LLM e RAG');
+  assert.strictEqual(P.parseProgram('# Uno\n# Due\nintro').intro, 'intro');
+  assert.strictEqual(P.parseProgram('intro').title, '');
+  assert.deepStrictEqual(['llm-rag', 'sql-modellazione', 'system_design', 'algoritmi', 'basi-di-dati', ''].map(P.prettyArea), ['LLM RAG', 'SQL modellazione', 'System design', 'Algoritmi', 'Basi di dati', '']);
+});
+
+test('calendario: righe giuste, righe fuori formato saltate', () => {
+  const c = P.parseCalendar('# Calendario\n- algoritmi | lun, mer,ven | 9:05 | 60\n- x | lun | 25:00 | 60\n- y | boh | 10:00 | 60\n- z | mar | 10:00 | 5\nriga strana\n- sistemi | dom | 18:30 | 180\n');
+  assert.deepStrictEqual(c, [{ area: 'algoritmi', days: ['lun', 'mer', 'ven'], time: '09:05', minutes: 60 }, { area: 'sistemi', days: ['dom'], time: '18:30', minutes: 180 }]);
+  for (const junk of ['', null, undefined, '- | | |', '\u0000']) assert.deepStrictEqual(P.parseCalendar(junk), []);
+  assert.strictEqual(P.parseCalendar('- a | lun | 10:00 | 30\n'.repeat(40)).length, 14);
+});

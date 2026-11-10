@@ -1,0 +1,16 @@
+{
+  "name": "Studio",
+  "short_name": "Studio",
+  "description": "Il programma di studio: cosa fare oggi, i passi, le verifiche",
+  "lang": "it",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f3faf8",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

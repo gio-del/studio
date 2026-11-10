@@ -141,3 +141,31 @@ test('sessione del tutor: variabili facoltative, solo URL http(s)', async (t) =>
   const fb = await (await call('GET', '/api/feedback', null, await login())).json();
   assert.deepStrictEqual(fb.session, { url: null, name: null });
 });
+
+test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manifest e icone', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  let ov = await (await call('GET', '/api/overview', null, c)).json();
+  assert.strictEqual(ov.date, '2026-11-09');
+  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'suggerita' }, 'senza calendario: l\'unica area con passi aperti');
+  assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi', 'Strana']);
+  assert.strictEqual(ov.areas[0].last, '2026-11-02');
+  assert.strictEqual(ov.gapsTotal, 2);
+  assert.strictEqual(ov.firstGaps.length, 2);
+  // il 2026-11-09 è lunedì: vale la riga di lunedì; un'area senza passi aperti o sconosciuta non diventa «oggi»
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '# Calendario\n- sistemi | lun | 08:00 | 30\n- inventata | lun | 08:30 | 30\n- Algoritmi | lun,gio | 19:00 | 60\n- algoritmi | mar | 07:00 | 45\n<script>\n');
+  ov = await (await call('GET', '/api/overview', null, c)).json();
+  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'calendario', time: '19:00', minutes: 60 });
+  assert.deepStrictEqual(ov.later, []);
+  const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();
+  assert.strictEqual(a.title, 'Algoritmi');
+  assert.ok(a.resources.length > 0);
+  assert.strictEqual((await (await call('GET', '/api/lacune', null, c)).json()).titles.algoritmi, 'Algoritmi');
+  const m = await call('GET', '/manifest.webmanifest');
+  assert.strictEqual(m.status, 200);
+  assert.match(m.headers.get('content-type'), /manifest\+json/);
+  const man = await m.json();
+  assert.strictEqual(man.display, 'standalone');
+  for (const i of man.icons) assert.strictEqual((await call('GET', i.src)).status, 200, i.src);
+  assert.match((await call('GET', '/')).headers.get('content-security-policy'), /manifest-src 'self'/);
+});
