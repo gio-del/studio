@@ -12,6 +12,9 @@ Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L
 - `progressi.md`: una riga per sessione, la più recente in alto: `- AAAA-MM-GG | area | passo | esito delle verifiche | lacune`.
 - `verifiche.md`: una sezione per verifica, la più recente in cima: `## AAAA-MM-GG | area | Parte N | sessione` (o `fine parte`), poi `Domande:`, `Esito:` e `Lacune:` con righe `- [ ]` (da ripassare) o `- [x]` (ripassata). L app mostra lo storico e le lacune aperte.
 - `calendario.md`: i giorni di studio, una riga per voce: `- area | giorni | HH:MM | minuti` (giorni fra `lun,mar,mer,gio,ven,sab,dom`, minuti da 15 a 180). L'app lo legge per dire su **Oggi** quale area tocca; se manca o oggi non c'è niente, propone l'area ferma da più tempo.
+- `Note/`: gli appunti dell'owner, file `.md` (solo suoi). Sola lettura: l'app non li scrive e il tutor non li modifica. Nella pagina di un passo compaiono le note che ne citano il testo (nel nome o nel contenuto): titolo (il primo `# titolo`, o il nome del file) e anteprima.
+- `Schede/`: schede di ripasso scritte dal tutor a fine sessione, file `AAAA-MM-GG area - passo.md` (area = nome del file o titolo dell'area, passo = il testo del passo, anche abbreviato): concetti chiave, domande di ripasso, link `[[…]]` a risorse e altre schede. Sola lettura per l'app, che le mostra accanto al passo. Le cartelle possono mancare o essere vuote.
+  - `Studio/` è questa cartella montata nel vault di Obsidian. Con `HS_OBSIDIAN_VAULT` (nome del vault) ogni nota e scheda ha «Apri in Obsidian»: `obsidian://open?vault=<nome>&file=Studio/<cartella>/<file>`; senza, il link non compare.
 - `feedback.md`: cosa il tutor ha cambiato dopo le segnalazioni.
 - `segnalazioni.md`: le segnalazioni dell'owner dall'app, una riga ciascuna: `- AAAA-MM-GG HH:MM | area | tipo | testo`.
   - tipo: `manca` (manca qualcosa), `rifare` (spiegazione da rifare), `risorsa` (risorsa sbagliata), `altro`;
