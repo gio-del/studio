@@ -40,7 +40,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
     const gone = new Promise((r) => chrome.once("exit", r));
     chrome.kill("SIGKILL"); await gone; server.close();
     fs.rmSync(dir, { recursive: true, force: true });
-    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 });
+    // Chromium può scrivere ancora un attimo dopo la chiusura: la cartella temporanea non fa fallire il test
+    try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 20, retryDelay: 300 }); } catch { /* resta in /tmp */ }
   });
   await waitHttp(`http://127.0.0.1:${dport}/json/version`, 60000);
   const page = (await (await fetch(`http://127.0.0.1:${dport}/json/list`)).json()).find((x) => x.type === 'page');
