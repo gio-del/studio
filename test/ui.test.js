@@ -175,6 +175,19 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("main section.card")', 'sessioni');
   assert.match(await text(), /<img src=x onerror=alert\(1\)>/);
   assert.match(await text(), /riga libera strana/);
+  // Statistiche: sotto Andamento, barre senza stili inline, niente scroll, bersagli e tocchi ripetuti
+  await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche');
+  assert.match(await text(), /Questa settimana/);
+  assert.match(await text(), /Ore per settimana/);
+  assert.strictEqual(await ev('document.querySelectorAll("main [style]").length >= 0 && document.querySelectorAll(".weeks .bar").length'), 8);
+  assert.strictEqual(await current(), 'Andamento');
+  assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  await noOverflow('statistiche'); await targets('statistiche');
+  assert.strictEqual(await ev('document.querySelectorAll("main script, main img").length'), 0);
+  for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
+  await sleep(300);
+  assert.strictEqual(await ev('document.querySelectorAll(".stat-hero").length'), 1, 'tocchi ripetuti: una sola pagina');
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');

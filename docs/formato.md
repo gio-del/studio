@@ -9,7 +9,7 @@ Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L
   - `## Parte N: titolo` per ogni parte, con le righe `Obiettivo:` e `Verifica finale:`;
   - dentro ogni parte, `### Settimana N` con i passi `- [ ] passo (risorsa: [titolo](link), tempo stimato)`; `- [x]` quando il passo è fatto e verificato.
 - `risorse/<area>.md`: le fonti scelte, con link e perché (markdown semplice: titoli, elenchi, link).
-- `progressi.md`: una riga per sessione, la più recente in alto: `- AAAA-MM-GG | area | passo | esito delle verifiche | lacune`.
+- `progressi.md`: una riga per sessione, la più recente in alto: `- AAAA-MM-GG | area | passo | esito delle verifiche | lacune`, più in coda, facoltativo, i minuti della sessione: `… | lacune | 45 min` (intero 1-999). La pagina Statistiche somma i minuti per settimana (lunedì-domenica) contro l'obiettivo di 7 ore; una riga senza minuti conta come sessione ma non come ore.
 - `verifiche.md`: una sezione per verifica, la più recente in cima: `## AAAA-MM-GG | area | Parte N | sessione` (o `fine parte`), poi `Domande:`, `Esito:` e `Lacune:` con righe `- [ ]` (da ripassare) o `- [x]` (ripassata). L app mostra lo storico e le lacune aperte.
 - `calendario.md`: i giorni di studio, una riga per voce: `- area | giorni | HH:MM | minuti` (giorni fra `lun,mar,mer,gio,ven,sab,dom`, minuti da 15 a 180). L'app lo legge per dire su **Oggi** quale area tocca; se manca o oggi non c'è niente, propone l'area ferma da più tempo.
 - `feedback.md`: cosa il tutor ha cambiato dopo le segnalazioni.
