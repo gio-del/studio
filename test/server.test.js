@@ -132,3 +132,12 @@ test('senza verifiche.md le pagine rispondono vuote', async (t) => {
   assert.deepStrictEqual((await (await call('GET', '/api/verifiche', null, ck)).json()).rows, []);
   assert.deepStrictEqual((await (await call('GET', '/api/lacune', null, ck)).json()).gaps, []);
 });
+
+test('sessione del tutor: variabili facoltative, solo URL http(s)', async (t) => {
+  assert.strictEqual(readConfig({ AUTH_PASSWORD: 'x', STUDIO_DIR: '/x' }).sessionUrl, null);
+  assert.strictEqual(readConfig({ AUTH_PASSWORD: 'x', STUDIO_DIR: '/x', STUDIO_SESSION_URL: 'javascript:alert(1)' }).sessionUrl, null);
+  assert.strictEqual(readConfig({ AUTH_PASSWORD: 'x', STUDIO_DIR: '/x', STUDIO_SESSION_URL: 'https://example.com/s' }).sessionUrl, 'https://example.com/s');
+  const { call, login } = await start(t);
+  const fb = await (await call('GET', '/api/feedback', null, await login())).json();
+  assert.deepStrictEqual(fb.session, { url: null, name: null });
+});

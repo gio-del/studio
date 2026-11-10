@@ -30,7 +30,7 @@ function cdp(wsUrl) {
 test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione', { skip: !CHROME && 'Chromium non installato', timeout: 120000 }, async (t) => {
   const dir = makeFixture();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
-  const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0' }) });
+  const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   const dport = 20000 + Math.floor(Math.random() * 20000);
@@ -143,4 +143,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#nav a[aria-current=page]").textContent'), 'Feedback');
+  assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
+  assert.strictEqual(await ev('document.querySelector("#sessione a").rel'), 'noopener noreferrer');
+  assert.strictEqual(await ev('document.querySelector("#sessione a").getBoundingClientRect().height >= 44'), true);
+  await noOverflow('feedback con sessione');
 });
