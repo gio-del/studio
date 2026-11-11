@@ -87,6 +87,25 @@ function createServer({ config, now = Date.now }) {
     return send(res, 200, { ok: true });
   }
 
+  // «Fatto» su un passo, con i minuti: una riga `fatto` che il tutor verifica. Una seconda richiesta uguale non scrive di nuovo.
+  async function fatto(req, res) {
+    const b = await readJson(req);
+    if (!P.validMinutes(b.minutes)) return send(res, 400, { error: `Minuti da 1 a ${P.MAX_MINUTES}` });
+    const a = typeof b.area === 'string' ? await data.area(b.area) : null;
+    if (!a) return send(res, 400, { error: 'Area sconosciuta' });
+    const { part, week, index } = b.step && typeof b.step === 'object' ? b.step : {};
+    const found = a.parts.find((p) => p.n === part)?.weeks.find((w) => w.n === week)?.steps[index];
+    if (!found) return send(res, 400, { error: 'Passo sconosciuto' });
+    if (found.done) return send(res, 400, { error: 'Passo già fatto' });
+    const key = P.fattoText(part, week, found.text, '').replace(/ min$/, '');
+    const same = (cur) => cur.split(/\r?\n/).some((l) => {
+      const r = P.parseReports(l)[0];
+      return r && r.type === 'fatto' && r.area === b.area && r.text.replace(/\d{1,3} min$/, '') === key;
+    });
+    const line = await data.appendReport({ area: b.area, type: 'fatto', text: P.fattoText(part, week, found.text, b.minutes) }, same);
+    return send(res, 200, { ok: true, already: line === null });
+  }
+
   async function api(req, res, p) {
     if (req.method === 'POST' && p === '/api/login') {
       const b = await readJson(req);
@@ -101,6 +120,7 @@ function createServer({ config, now = Date.now }) {
       return send(res, 200, { ok: true }, { 'set-cookie': 'sid=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
     }
     if (req.method === 'POST' && p === '/api/segnala') return segnala(req, res);
+    if (req.method === 'POST' && p === '/api/fatto') return fatto(req, res);
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     const session = { url: config.sessionUrl || null, name: config.sessionName || null };
     if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });

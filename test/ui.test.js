@@ -139,6 +139,32 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelector("form.report .error").textContent.length > 0', 'errore testo vuoto');
   assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1);
 
+  // Fatto con i minuti: valore proposto dal tempo del passo, minuti non validi rifiutati, un invio solo con tocchi ripetuti
+  await ev(toggle + '.click()'); // chiude il modulo Segnala rimasto aperto
+  const doneBtn = 'document.querySelector("li.next .step-panel .actions button:not(.ghost)")';
+  await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()');
+  assert.strictEqual(await ev('document.querySelectorAll("form.done-form").length'), 1, 'tocchi ripetuti, un solo modulo');
+  assert.strictEqual(await ev('document.querySelector("form.done-form input").value'), '180', '3 h proposte come 180 minuti');
+  await noOverflow('modulo fatto'); await targets('modulo fatto');
+  await ev('document.querySelector("form.done-form input").value = "0"');
+  await ev('document.querySelector("form.done-form button[type=submit]").click()');
+  await waitFor('document.querySelector("form.done-form .error").textContent.length > 0', 'minuti non validi');
+  await ev('document.querySelector("form.done-form input").value = "1000"');
+  await ev('document.querySelector("form.done-form button[type=submit]").click()');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1, 'minuti non validi: nessuna riga');
+  await ev('document.querySelector("form.done-form input").value = "45"');
+  await ev('(() => { const b = document.querySelector("form.done-form button[type=submit]"); b.click(); b.click(); b.click(); })()');
+  await waitFor('document.querySelectorAll("form.done-form").length === 0', 'modulo chiuso dopo l\'invio');
+  await waitFor('/Da verificare · 45 min/.test(document.querySelector("li.next .step-panel").textContent)', 'passo da verificare');
+  const rows = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
+  assert.strictEqual(rows.length, 2, 'tre tocchi su Invia, una riga in più');
+  assert.match(rows[1], /\| algoritmi \| fatto \| \[passo: Parte 1, Settimana 1, Array e stringhe\] 45 min$/);
+  assert.strictEqual(await ev('!!document.querySelector("li.next .step-panel .actions button:not(.ghost)")'), false, 'niente secondo «Fatto» sul passo');
+  // ricaricata la pagina il passo resta «da verificare» e non offre di nuovo «Fatto»
+  await go('#/area/algoritmi');
+  await waitFor('!!document.querySelector("ul.steps")', 'area ricaricata');
+  assert.match(await ev('document.querySelector("li.next .step-panel").textContent'), /Da verificare · 45 min/);
+
   // Verifiche (il vecchio indirizzo porta alla scheda nuova) e Da ripassare, con HTML ostile nei file
   await go('#/verifiche');
   await waitFor('location.hash === "#/andamento/verifiche" && !!document.querySelector("main section.card")', 'verifiche');
