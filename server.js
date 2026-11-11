@@ -33,6 +33,7 @@ function readConfig(env) {
     sessionName: (env.STUDIO_SESSION_NAME || '').trim().slice(0, 60) || null,
     // Facoltativo: nome del vault di Obsidian per i link «Apri in Obsidian»; senza, i link non compaiono.
     obsidianVault: /^[^\u0000-\u001f\u007f]{1,100}$/.test((env.HS_OBSIDIAN_VAULT || '').trim()) ? env.HS_OBSIDIAN_VAULT.trim() : null,
+    stateDir: env.STATE_DIR ? path.resolve(env.STATE_DIR) : null,
     user: env.AUTH_USER || 'studio',
     password,
   };
@@ -40,7 +41,7 @@ function readConfig(env) {
 
 function createServer({ config, now = Date.now }) {
   const data = createData(config.studioDir, now, { obsidianVault: config.obsidianVault });
-  const auth = createAuth({ user: config.user, password: config.password, now });
+  const auth = createAuth({ user: config.user, password: config.password, now, stateDir: config.stateDir });
   const publicDir = path.join(__dirname, 'public');
 
   function send(res, status, body, extra = {}) {
