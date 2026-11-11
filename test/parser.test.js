@@ -102,3 +102,8 @@ test('calendario: righe giuste, righe fuori formato saltate', () => {
   for (const junk of ['', null, undefined, '- | | |', '\u0000']) assert.deepStrictEqual(P.parseCalendar(junk), []);
   assert.strictEqual(P.parseCalendar('- a | lun | 10:00 | 30\n'.repeat(40)).length, 14);
 });
+
+test('progressi: minuti facoltativi dalla riga', () => {
+  const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
+  assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));
+});

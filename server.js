@@ -106,6 +106,7 @@ function createServer({ config, now = Date.now }) {
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     const session = { url: config.sessionUrl || null, name: config.sessionName || null };
     if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });
+    if (p === '/api/calendario') return send(res, 200, await data.calendar());
     if (p === '/api/resources') return send(res, 200, await data.resources());
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
     if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });

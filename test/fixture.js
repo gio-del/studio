@@ -23,7 +23,9 @@ una nota <b>strana</b>
 ## Parte 2: Alberi
 Obiettivo: attraversare alberi
 `;
-const PROG = '- 2026-11-02 | algoritmi | Notazione O grande | 8/10 | nessuna\n- 2026-11-03 | sistemi | <img src=x onerror=alert(1)> | ok\nriga libera strana\n';
+const PROG = '- 2026-11-02 | algoritmi | Notazione O grande | 8/10 | nessuna\n- 2026-11-03 | sistemi | <img src=x onerror=alert(1)> | ok\nriga libera strana\n- 2026-11-09 | algoritmi | Array e stringhe | ok | 25 min\n- 2026-11-09 | sistemi | lettura | ok | 20 min, 2026-11-10\n';
+
+const CAL = '- algoritmi | lun,mer | 18:30 | 60\n- Sistemi | lun | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\nriga strana\n';
 
 function makeFixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-data-'));
@@ -36,6 +38,7 @@ function makeFixture() {
   fs.writeFileSync(path.join(dir, 'risorse', 'algoritmi.md'), '# Fonti\n- [Awesome](https://example.com/a) perché sì\n- [Brutto](javascript:alert(1)) no\n');
   fs.writeFileSync(path.join(dir, 'progressi.md'), PROG);
   fs.writeFileSync(path.join(dir, 'verifiche.md'), module.exports.VERIFICHE);
+  fs.writeFileSync(path.join(dir, 'calendario.md'), CAL);
   fs.writeFileSync(path.join(dir, 'feedback.md'), '- 2026-11-04: aggiunta la parte 3 <script>x</script>\n');
   return dir;
 }

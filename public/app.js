@@ -358,11 +358,27 @@ async function pageFeedback(main) {
   if (t) main.append(h('h2', null, 'Parla con il tutor'), h('section', { class: 'card' }, t));
 }
 
+const GIORNO = { lun: 'Lunedì', mar: 'Martedì', mer: 'Mercoledì', gio: 'Giovedì', ven: 'Venerdì', sab: 'Sabato', dom: 'Domenica' };
+async function pageCalendario(main) {
+  const { days } = await api('/api/calendario');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
+  for (const d of days) {
+    const dd = d.date.split('-');
+    const head = h('div', { class: 'top' }, h('h2', null, `${GIORNO[d.day] || d.day} ${Number(dd[2])} ${MESI[Number(dd[1]) - 1] || ''}`), d.today ? chip('Oggi', 'pri') : null);
+    const body = d.items.length
+      ? [h('ul', { class: 'cal-items' }, d.items.map((e) => h('li', null, h('span', { class: 'cal-time' }, e.time), h('span', { class: 'grow' }, e.area ? h('a', { href: `#/area/${encodeURIComponent(e.area)}` }, e.title) : e.title), h('span', { class: 'muted' }, `${e.minutes} min`)))),
+        h('p', { class: 'small muted' }, `Fatti ${d.done} min su ${d.planned} previsti`)]
+      : [h('p', { class: 'muted' }, 'Riposo'), d.done ? h('p', { class: 'small muted' }, `Fatti ${d.done} min`) : null];
+    main.append(h('section', { class: `card cal-day${d.today ? ' is-today' : ''}`, 'data-date': d.date, 'aria-current': d.today ? 'date' : false }, head, body));
+  }
+}
+
 async function pageAltro(main) {
   const f = await api('/api/feedback');
   const item = (href, ic, title, sub) => h('a', { class: 'row', href }, icon(ic), h('span', { class: 'grow' }, h('span', { class: 'title' }, title), h('span', { class: 'small muted sub' }, sub)), icon('avanti', 'chev'));
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
+    item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
     item('#/feedback', 'segnala', 'Segnalazioni', f.open.length ? `${plural(f.open.length, 'aperta', 'aperte')}` : 'Cosa hai segnalato e cosa ha cambiato il tutor')),
     t ? h('section', { class: 'card' }, t) : null,
@@ -389,7 +405,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', feedback: 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', calendario: 'altro', feedback: 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -425,6 +441,7 @@ async function route() {
     else if (known === 'programma') await pageProgramma(main);
     else if (known === 'ripasso') await pageRipasso(main);
     else if (known === 'andamento') await pageAndamento(main, arg);
+    else if (known === 'calendario') await pageCalendario(main);
     else if (known === 'risorse') await pageRisorse(main);
     else if (known === 'feedback') await pageFeedback(main);
     else if (known === 'altro') await pageAltro(main);
