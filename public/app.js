@@ -2,6 +2,7 @@
 // Tutto il testo dei file di studio entra nella pagina solo con textContent (sono dati non fidati).
 const $ = (s) => document.querySelector(s);
 const TIPI = [['manca', 'Manca qualcosa'], ['rifare', 'Spiegazione da rifare'], ['risorsa', 'Risorsa sbagliata'], ['altro', 'Altro']];
+const TIPI_VISTA = [...TIPI, ['fatto', 'Fatto, da verificare']];
 const SVG = 'http://www.w3.org/2000/svg';
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
@@ -153,6 +154,44 @@ function reportBox(area, step) {
   return { open, holder };
 }
 
+// Minuti proposti dal tempo stimato del passo ("2 h", "45 min"); 30 se non si capisce.
+function guessMinutes(time) {
+  const t = String(time || '').toLowerCase();
+  let m = /(\d+(?:[.,]\d+)?)\s*(?:h|or[ae])\b/.exec(t);
+  if (m) return Math.min(999, Math.max(1, Math.round(parseFloat(m[1].replace(',', '.')) * 60)));
+  m = /(\d+)\s*min/.exec(t);
+  return m ? Math.min(999, Math.max(1, Number(m[1]))) : 30;
+}
+
+// «Fatto» con i minuti: scrive una riga che il tutor verifica; il passo resta «da verificare». Un invio solo.
+function doneBox(area, step, time, onSent) {
+  const holder = h('div');
+  const open = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false' }, icon('fatto'), 'Fatto');
+  let form = null;
+  open.addEventListener('click', () => {
+    if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
+    open.setAttribute('aria-expanded', 'true');
+    const min = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1, value: guessMinutes(time), 'aria-label': 'Minuti studiati' });
+    const err = h('div', { class: 'error', role: 'alert' });
+    const send = h('button', { class: 'btn', type: 'submit' }, 'Invia');
+    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, err, h('div', { class: 'row-btn' }, send));
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (send.disabled) return;
+      const n = Number(min.value);
+      if (!Number.isInteger(n) || n < 1 || n > 999) { err.textContent = 'Scrivi i minuti, da 1 a 999'; return; }
+      send.disabled = true; err.textContent = '';
+      try {
+        await api('/api/fatto', { area, step, minutes: n });
+        form.remove(); form = null; onSent(n);
+        toast('Segnato: il tutor lo verifica alla prossima sessione');
+      } catch (e) { err.textContent = e.message; send.disabled = false; }
+    });
+    holder.append(form); min.focus(); min.select();
+  });
+  return { open, holder };
+}
+
 function tutorLine(session) {
   if (!session || (!session.url && !session.name)) return null;
   const nome = session.name ? `«${session.name}»` : 'del tutor';
@@ -234,11 +273,16 @@ function stepItem(a, p, w, s, i, isNext) {
   const id = `passo-${p.n}-${w.n}-${i}`;
   const rb = reportBox(a.area, { part: p.n, week: w.n, index: i });
   const res = s.resource;
+  const pending = h('div', { class: 'chips', id: `${id}-verifica` });
+  const showPending = (min) => { pending.replaceChildren(chip(`Da verificare · ${min} min`, 'pri')); };
+  const fb = s.done ? null : doneBox(a.area, { part: p.n, week: w.n, index: i }, s.time, (min) => { showPending(min); fb.open.remove(); });
+  if (s.pending) showPending(s.pending);
   const panel = h('div', { class: 'step-panel', id, hidden: isNext ? false : '' },
     res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa')) : null,
     s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
     docsBlock(s.docs),
-    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, rb.open), rb.holder);
+    pending,
+    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, fb && !s.pending ? fb.open : null, rb.open), fb ? fb.holder : null, rb.holder);
   const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
     icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),
     h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Prossimo: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text)),
@@ -439,7 +483,7 @@ async function pageFeedback(main) {
   if (!open.length) main.append(h('p', { class: 'muted' }, 'Nessuna segnalazione aperta.'));
   for (const r of open) {
     main.append(h('section', { class: 'card entry' }, r.raw ? r.raw : [
-      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text)]));
+      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI_VISTA.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text)]));
   }
   main.append(h('h2', null, 'Cosa ha cambiato il tutor'));
   main.append(bl.length ? h('section', { class: 'card prose' }, listOf(bl)) : h('p', { class: 'muted' }, 'Ancora niente.'));

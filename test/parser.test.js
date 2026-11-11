@@ -105,6 +105,18 @@ test('calendario: righe giuste, righe fuori formato saltate', () => {
   assert.strictEqual(P.parseCalendar('- a | lun | 10:00 | 30\n'.repeat(40)).length, 14);
 });
 
+test('fatto: riga con i minuti, lettura e limiti', () => {
+  const t = P.fattoText(1, 2, 'Passo | con ] strano\nsu due righe', 45);
+  assert.ok(!t.includes('\n') && !t.includes('|'));
+  assert.deepStrictEqual(P.parseFatto(t), { part: 1, week: 2, text: 'Passo / con / strano su due righe', minutes: 45 });
+  assert.strictEqual(P.parseFatto('[passo: Parte 1, Settimana 1, x] 0 min').minutes, 0);
+  assert.strictEqual(P.parseFatto('testo libero'), null);
+  assert.strictEqual(P.parseFatto('[passo: Parte 1, Settimana 1, x] 45 minuti'), null);
+  assert.deepStrictEqual([0, 1, 999, 1000, 1.5, '5', NaN].map(P.validMinutes), [false, true, true, false, false, false, false]);
+  const rows = P.parseReports(`- 2026-11-09 12:00 | algo | fatto | ${t}`);
+  assert.strictEqual(rows[0].type, 'fatto');
+});
+
 test('progressi: minuti facoltativi dalla riga', () => {
   const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
   assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));

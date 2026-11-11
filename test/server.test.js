@@ -189,6 +189,43 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   assert.match((await call('GET', '/')).headers.get('content-security-policy'), /manifest-src 'self'/);
 });
 
+test('fatto: una riga con i minuti, mai doppia, minuti e passi non validi rifiutati, il passo risulta da verificare', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const step = { part: 1, week: 1, index: 1 };
+  const ok = await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 45 }, c);
+  assert.strictEqual(ok.status, 200);
+  assert.strictEqual((await ok.json()).already, false);
+  const again = await (await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 50 }, c)).json();
+  assert.strictEqual(again.already, true, 'stesso passo ancora aperto: non scrive di nuovo');
+  const file = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8');
+  assert.strictEqual(file.split('\n').filter(Boolean).length, 1);
+  assert.strictEqual(file, '- 2026-11-09 12:05 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Array e stringhe] 45 min\n');
+  const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();
+  assert.strictEqual(a.parts[0].weeks[0].steps[1].pending, 45);
+  assert.strictEqual(a.parts[0].weeks[0].steps[2].pending, undefined);
+  const bad = [
+    { area: 'algoritmi', step, minutes: 0 }, { area: 'algoritmi', step, minutes: 1000 }, { area: 'algoritmi', step, minutes: -5 },
+    { area: 'algoritmi', step, minutes: 1.5 }, { area: 'algoritmi', step, minutes: '45' }, { area: 'algoritmi', step },
+    { area: 'algoritmi', step: { part: 1, week: 1, index: 0 }, minutes: 10 }, // già fatto
+    { area: 'algoritmi', step: { part: 9, week: 9, index: 9 }, minutes: 10 }, { area: 'algoritmi', minutes: 10 },
+    { area: 'nonesiste', step, minutes: 10 }, { area: '../x', step, minutes: 10 },
+  ];
+  for (const b of bad) assert.strictEqual((await call('POST', '/api/fatto', b, c)).status, 400, JSON.stringify(b));
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8'), file, 'le richieste rifiutate non scrivono');
+  assert.strictEqual((await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 5 })).status, 401, 'serve il login');
+});
+
+test('fatto: richieste in parallelo sullo stesso passo scrivono una riga; testo ostile del passo resta su una riga', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const step = { part: 1, week: 1, index: 2 }; // «Passo <script>…» con testo ostile
+  await Promise.all(Array.from({ length: 8 }, () => call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 20 }, c)));
+  const lines = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, 1);
+  assert.match(lines[0], /\| fatto \| \[passo: Parte 1, Settimana 1, Passo <script>alert\(1\)<\/script>\] 20 min$/);
+});
+
 test('leetcode: file assente, vuoto, campi strani; passi del programma; statistiche per settimana', async (t) => {
   const { call, login, dir } = await start(t);
   const ck = await login();

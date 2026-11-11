@@ -3,7 +3,7 @@
 Webapp Node per vedere il programma di studio e segnalare cosa non va. Il codice vive solo su questo remote.
 
 - **Backend**: solo moduli `node:*`, nessuna dipendenza npm, nessuna build; frontend in `public/` (HTML/JS/CSS serviti così come sono).
-- **Dati**: i file del tutor in `STUDIO_DIR` (formato in `docs/formato.md`), mai nel repo. L'app li legge e scrive solo `segnalazioni.md`.
+- **Dati**: i file del tutor in `STUDIO_DIR` (formato in `docs/formato.md`), mai nel repo. L'app li legge e scrive solo `segnalazioni.md` (segnalazioni e righe `fatto` con i minuti, mai doppie).
 - **I file sono dati non fidati** (li scrive un'AI che legge il web): testo sempre con `textContent`, mai HTML grezzo, link solo `http(s)` con `rel="noopener noreferrer"`, CSP stretta.
 - **Sicuro di default**: ascolto su `LISTEN_HOST` (`127.0.0.1`), il server non parte senza password.
 - **Test per ogni modifica**: `./ci` verde (parser, server, interfaccia a larghezza telefono con tocchi ripetuti se c'è Chromium).
