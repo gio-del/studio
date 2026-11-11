@@ -33,6 +33,7 @@ const ICONS = {
   tutor: [['path', { d: 'M4 5h16v11H9l-5 4z' }]],
   esci: [['path', { d: 'M10 4H5v16h5M14 8l4 4-4 4M18 12H9' }]],
   calendario: [['rect', { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ['path', { d: 'M4 10h16M8 3v4M16 3v4' }]],
+  codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
   lacuna: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 8v5M12 16.5v.01' }]],
 };
 function icon(name, cls) {
@@ -219,6 +220,16 @@ async function pageProgramma(main) {
   }
 }
 
+// Note dell'owner e schede del tutor che riguardano il passo (sola lettura); il link a Obsidian c'è solo se l'app lo conosce.
+function docsBlock(docs) {
+  if (!docs || !docs.length) return null;
+  return h('div', { class: 'docs' }, docs.map((d) => h('div', { class: 'doc' },
+    h('div', { class: 'small muted' }, d.kind === 'Note' ? 'Nota' : 'Scheda'),
+    h('div', { class: 'doc-title' }, d.title),
+    d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
+    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null)));
+}
+
 function stepItem(a, p, w, s, i, isNext) {
   const id = `passo-${p.n}-${w.n}-${i}`;
   const rb = reportBox(a.area, { part: p.n, week: w.n, index: i });
@@ -226,6 +237,7 @@ function stepItem(a, p, w, s, i, isNext) {
   const panel = h('div', { class: 'step-panel', id, hidden: isNext ? false : '' },
     res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa')) : null,
     s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
+    docsBlock(s.docs),
     h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, rb.open), rb.holder);
   const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
     icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),
@@ -293,6 +305,17 @@ async function pageRipasso(main) {
   }
 }
 
+const DIFF = { Easy: 'Facile', Medium: 'Media', Hard: 'Difficile' };
+const diffChip = (d) => (d ? chip(DIFF[d] || d, d === 'Easy' ? 'ok' : d === 'Medium' ? 'warn' : 'ko') : null);
+const rangeLabel = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESI[m[2] - 1] || ''}` : String(iso || ''); };
+function updatedLine(ts) {
+  const d = typeof ts === 'number' && Number.isFinite(ts) ? new Date(ts * 1000) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'Nessun dato ancora: il file leetcode.json non c\'è o non si legge.';
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `Aggiornato il ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}, ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+
 // Riempimento di una barra: via CSSOM, gli attributi style inline sono vietati dalla CSP.
 function fillSpan(pct) { const s = h('span'); s.style.width = `${pct}%`; return s; }
 // Ore e minuti: 90 -> «1 h 30», 45 -> «45 min».
@@ -300,6 +323,21 @@ function hours(min) {
   const m = Math.max(0, Math.round(Number(min) || 0));
   return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ''}`;
 }
+// Esercizi LeetCode per settimana (stesso ordine di s.weeks, la più vecchia per prima nei dati).
+function leetcodeWeeks(main, s) {
+  const counts = s.leetcode || [];
+  const max = Math.max(1, ...counts);
+  const total = counts.reduce((a, b) => a + b, 0);
+  main.append(h('h2', null, 'LeetCode, esercizi per settimana'), h('p', { class: 'small muted' }, updatedLine(s.updated)));
+  const card = h('section', { class: 'card weeks lc', 'aria-label': 'Esercizi LeetCode per settimana' });
+  s.weeks.forEach((w, i) => {
+    card.append(h('div', { class: 'wrow' }, h('span', { class: 'wl' }, `dal ${rangeLabel(w.start)}`),
+      h('div', { class: 'bar', 'aria-hidden': 'true' }, fillSpan(Math.round((100 * (counts[i] || 0)) / max))), h('span', { class: 'count' }, String(counts[i] || 0))));
+  });
+  main.append(card, h('p', { class: 'small muted' }, total ? `${plural(total, 'esercizio', 'esercizi')} nelle ultime 8 settimane.` : 'Nessun esercizio nelle ultime 8 settimane.'),
+    h('a', { class: 'btn ghost', href: '#/leetcode' }, icon('codice'), 'Apri LeetCode'));
+}
+
 async function pageStatistiche(main) {
   const s = await api('/api/stats');
   const goal = s.goalMinutes;
@@ -333,7 +371,24 @@ async function pageStatistiche(main) {
   if (!s.areas.length) main.append(empty('programma', 'Nessuna area', 'Le aree compaiono quando il tutor scrive il programma.'));
   else main.append(list);
   main.append(h('p', { class: 'small muted' }, `In tutto: ${s.totals.done} passi su ${s.totals.total}, ${s.totals.superate} verifiche superate su ${s.totals.verifiche}, ${hours(s.totals.minutes)} di studio.`));
-  if (s.leetcode) main.append(h('h2', null, 'LeetCode'));
+  leetcodeWeeks(main, s);
+}
+
+async function pageLeetcode(main) {
+  const d = await api('/api/leetcode');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'LeetCode'), h('p', { class: 'small muted' }, updatedLine(d.updated)));
+  if (d.steps.length) {
+    main.append(h('h2', null, 'Dal programma'));
+    for (const e of d.steps) {
+      main.append(h('section', { class: 'card entry' }, h('div', { class: 'top' }, icon(e.done ? 'fatto' : 'dafare', 'state'), chip(e.done ? 'Fatto' : 'Da fare', e.done ? 'ok' : ''), diffChip(e.difficulty)),
+        h('p', { class: 'what' }, e.title), extBtn('Apri il problema', e.url, 'ghost')));
+    }
+  }
+  main.append(h('h2', null, 'Esercizi fatti'));
+  if (!d.solved.length) main.append(empty('codice', 'Nessun esercizio ancora', 'Qui compaiono gli invii accettati del tuo profilo.'));
+  for (const e of d.solved) {
+    main.append(h('section', { class: 'card entry' }, h('div', { class: 'top' }, when(e.date), diffChip(e.difficulty)), h('p', { class: 'what' }, link(e.title, e.url))));
+  }
 }
 
 async function pageAndamento(main, tab) {
@@ -397,6 +452,7 @@ async function pageAltro(main) {
   const item = (href, ic, title, sub) => h('a', { class: 'row', href }, icon(ic), h('span', { class: 'grow' }, h('span', { class: 'title' }, title), h('span', { class: 'small muted sub' }, sub)), icon('avanti', 'chev'));
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
+    item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
     item('#/feedback', 'segnala', 'Segnalazioni', f.open.length ? `${plural(f.open.length, 'aperta', 'aperte')}` : 'Cosa hai segnalato e cosa ha cambiato il tutor')),
     t ? h('section', { class: 'card' }, t) : null,
@@ -423,7 +479,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', feedback: 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', feedback: 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -459,6 +515,7 @@ async function route() {
     else if (known === 'programma') await pageProgramma(main);
     else if (known === 'ripasso') await pageRipasso(main);
     else if (known === 'andamento') await pageAndamento(main, arg);
+    else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);
     else if (known === 'feedback') await pageFeedback(main);
     else if (known === 'altro') await pageAltro(main);

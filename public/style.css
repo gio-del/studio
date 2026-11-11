@@ -151,6 +151,11 @@ li.done .step-text { color: var(--muted); }
 li.next button.step .state { color: var(--primary); }
 li.next .step-text { font-weight: 650; }
 .step-panel { padding: 0 0 var(--s4) 32px; }
+.docs { margin-bottom: var(--s3); }
+.doc { padding: var(--s2) var(--s3); margin-bottom: var(--s2); background: var(--surface-2); border-radius: var(--r-ctl); min-width: 0; }
+.doc-title, .doc-prev { overflow-wrap: anywhere; margin: 0; }
+.doc-title { font-weight: 600; }
+.doc .btn { margin-top: var(--s2); }
 .step-panel .res { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: var(--s2); }
 .step-panel .res .ic { margin-top: 2px; color: var(--muted); }
 form.report { margin-top: var(--s3); padding: var(--s3); background: var(--surface-2); border-radius: var(--r-ctl); }
@@ -161,7 +166,7 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .prose h3:first-child { margin-top: 0; }
 
 /* Andamento */
-.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s1); background: var(--surface-2); border-radius: var(--r-ctl); padding: var(--s1); margin: 0 0 var(--s4); }
+.seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--s1); background: var(--surface-2); border-radius: var(--r-ctl); padding: var(--s1); margin: 0 0 var(--s4); }
 .seg a { min-height: 44px; display: grid; place-items: center; border-radius: 9px; color: var(--muted); text-decoration: none; font-weight: 650; }
 .seg a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .entry .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -202,3 +207,4 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .wrow .wl { font-size: .875rem; color: var(--muted); white-space: nowrap; }
 .wrow .bar { margin: 0; height: 12px; }
 .wrow .count { min-width: 58px; text-align: right; }
+.entry .top .state { width: 20px; height: 20px; color: var(--primary); }
