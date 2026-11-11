@@ -170,6 +170,50 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   assert.match((await call('GET', '/')).headers.get('content-security-policy'), /manifest-src 'self'/);
 });
 
+test('leetcode: file assente, vuoto, campi strani; passi del programma; statistiche per settimana', async (t) => {
+  const { call, login, dir } = await start(t);
+  const ck = await login();
+  const get = async (p) => (await call('GET', p, null, ck)).json();
+  // assente
+  let lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc, { updated: null, solved: [], steps: [] });
+  let st = await get('/api/stats');
+  assert.strictEqual(st.weeks.length, 8);
+  assert.strictEqual(st.weeks[7], '2026-11-09', 'il 9 nov 2026 è lunedì');
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
+  // vuoto e non JSON
+  for (const body of ['', '   ', 'non json', '[]', 'null', '{"solved": 5}']) {
+    fs.writeFileSync(path.join(dir, 'leetcode.json'), body);
+    assert.deepStrictEqual((await get('/api/leetcode')).solved, [], JSON.stringify(body));
+    assert.strictEqual((await call('GET', '/api/stats', null, ck)).status, 200);
+  }
+  // campi strani: valide solo le voci giuste
+  const ok = (slug, date, extra = {}) => ({ slug, title: 'T ' + slug, difficulty: 'Easy', date, ...extra });
+  fs.writeFileSync(path.join(dir, 'leetcode.json'), JSON.stringify({
+    updated: 1794000000,
+    solved: [ok('two-sum', '2026-11-10'), ok('two-sum', '2026-11-01'), ok('add-two-numbers', '2026-11-03', { difficulty: 'Brutale' }),
+      ok('../etc/passwd', '2026-11-10'), ok('Bad Slug', '2026-11-10'), ok('bad-date', '2026-02-30'), ok('bad-date2', '10/11/2026'), ok('num-date', 20261110),
+      { slug: 5, date: '2026-11-10' }, { slug: 'hostile', title: '<img src=x onerror=alert(1)>', difficulty: null, date: '2026-10-20' },
+      { slug: 'no-title', date: '2026-10-19', title: 7 }, null, 'x', [], ok('old-one', '2025-01-01'), ok('future', '2026-11-12')],
+  }));
+  lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc.solved.map((e) => e.slug), ['future', 'two-sum', 'add-two-numbers', 'hostile', 'no-title', 'old-one']);
+  assert.strictEqual(lc.updated, 1794000000);
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'add-two-numbers').difficulty, null);
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'no-title').title, 'no-title');
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'two-sum').url, 'https://leetcode.com/problems/two-sum/');
+  st = await get('/api/stats');
+  // settimane da lunedì: 21 set … 9 nov; il 2025 resta fuori, la voce del 12 nov cade nella settimana in corso
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 2, 0, 1, 2]);
+  // passi del programma: fatti se `[x]` o se lo slug è in solved; righe senza slug valido saltate
+  fs.writeFileSync(path.join(dir, 'programma', 'leetcode.md'), '# LeetCode\n\n## Parte 1: Base\n\n### Settimana 1\n- [ ] two-sum | Two Sum | Easy\n- [ ] valid-parentheses | Valid Parentheses | Easy\n- [x] merge-intervals | Merge Intervals | Medium\n- [ ] ../x | Cattivo | Hard\n- [ ] solo testo\n- [ ] median-of-two | Mediana | Impossibile\n');
+  lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc.steps.map((s) => [s.slug, s.done, s.difficulty]),
+    [['two-sum', true, 'Easy'], ['valid-parentheses', false, 'Easy'], ['merge-intervals', true, 'Medium'], ['median-of-two', false, null]]);
+  assert.strictEqual(lc.steps[1].url, 'https://leetcode.com/problems/valid-parentheses/');
+  assert.strictEqual((await call('GET', '/api/leetcode')).status, 401);
+});
+
 test('note e schede accanto al passo, con link a Obsidian', async (t) => {
   const dir = makeFixture();
   const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', HS_OBSIDIAN_VAULT: 'Il mio vault' });
