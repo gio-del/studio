@@ -263,3 +263,26 @@ test('senza HS_OBSIDIAN_VAULT il link non compare', async (t) => {
   assert.strictEqual(d.length, 1);
   assert.strictEqual(d[0].url, null);
 });
+
+test('calendario: la settimana con voci e minuti fatti, vuota se manca il file', async (t) => {
+  const { call, login, dir } = await start(t);
+  assert.strictEqual((await call('GET', '/api/calendario')).status, 401);
+  const c = await login();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mer | 18:30 | 60\n- Sistemi | lun | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\nriga strana\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 25 min\n- 2026-11-09 | sistemi | lettura | ok | 20 min\n- 2026-11-02 | algoritmi | vecchio | ok | 99 min\n');
+  const r = await (await call('GET', '/api/calendario', null, c)).json();
+  assert.deepStrictEqual(r.days.map((d) => d.day), ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']);
+  assert.deepStrictEqual(r.days.map((d) => d.date)[0], '2026-11-09');
+  assert.strictEqual(r.days[0].today, true);
+  assert.deepStrictEqual(r.days[0].items.map((e) => [e.time, e.title, e.minutes]), [['07:15', 'Sistemi', 30], ['18:30', 'Algoritmi', 60]]);
+  assert.strictEqual(r.days[0].planned, 90);
+  assert.strictEqual(r.days[0].done, 45);
+  assert.strictEqual(r.days[1].items.length, 0);
+  assert.strictEqual(r.days[6].items[0].area, null);
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '\u0000 niente di valido\n');
+  const e = await call('GET', '/api/calendario', null, c);
+  assert.strictEqual(e.status, 200);
+  assert.ok((await e.json()).days.every((d) => d.items.length === 0));
+  fs.rmSync(path.join(dir, 'calendario.md'));
+  assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
+});

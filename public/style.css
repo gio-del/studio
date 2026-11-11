@@ -198,6 +198,15 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .entry .gaps { margin-top: var(--s2); }
 .tabs a { white-space: nowrap; overflow-wrap: normal; }
 
+/* Calendario */
+.cal-day h2 { margin: 0; }
+.cal-day .top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
+.cal-day.is-today { border-color: var(--primary); background: var(--primary-soft); }
+.cal-items { list-style: none; margin: 0 0 var(--s2); padding: 0; }
+.cal-items li { display: flex; align-items: center; gap: var(--s3); min-height: 44px; }
+.cal-items a { display: inline-flex; align-items: center; min-height: 44px; }
+.cal-time { font-variant-numeric: tabular-nums; font-weight: 650; }
+.cal-day p { margin: 0; }
 .weeks .wk { display: grid; grid-template-columns: 5.5rem 1fr 2rem; align-items: center; gap: var(--s3); min-height: 32px; }
 .weeks .wk .bar { margin: 0; }
 .weeks .wk .count { text-align: right; color: var(--ink); }

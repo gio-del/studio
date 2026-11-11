@@ -56,7 +56,7 @@ test('safeUrl: solo http(s)', () => {
 
 test('progressi e segnalazioni: righe giuste e sbagliate', () => {
   const rows = P.parseProgress('- 2026-11-02 | algo | passo | 8/10 | lacuna | con barra\nstrana\n');
-  assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra' });
+  assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra', minutes: 0 });
   assert.deepStrictEqual(rows[1], { raw: 'strana' });
   const rep = P.parseReports('- 2026-11-09 12:00 | algo | manca | testo | con barra\nqualcosa\n');
   assert.deepStrictEqual(rep[0], { date: '2026-11-09 12:00', area: 'algo', type: 'manca', text: 'testo | con barra' });
@@ -101,4 +101,9 @@ test('calendario: righe giuste, righe fuori formato saltate', () => {
   assert.deepStrictEqual(c, [{ area: 'algoritmi', days: ['lun', 'mer', 'ven'], time: '09:05', minutes: 60 }, { area: 'sistemi', days: ['dom'], time: '18:30', minutes: 180 }]);
   for (const junk of ['', null, undefined, '- | | |', '\u0000']) assert.deepStrictEqual(P.parseCalendar(junk), []);
   assert.strictEqual(P.parseCalendar('- a | lun | 10:00 | 30\n'.repeat(40)).length, 14);
+});
+
+test('progressi: minuti facoltativi dalla riga', () => {
+  const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
+  assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));
 });
