@@ -205,6 +205,41 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await noOverflow('schermo largo');
   await c.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 1, mobile: true });
 
+  // LeetCode: senza file la pagina lo dice; con file ostile mostra solo testo; Statistiche per settimana
+  await go('#/leetcode');
+  await waitFor('!!document.querySelector("main h1") && document.querySelector("main h1").textContent === "LeetCode" && document.querySelector("main .empty")', 'leetcode vuoto');
+  assert.match(await text(), /Nessun dato ancora/);
+  assert.strictEqual(await current(), 'Altro');
+  fs.writeFileSync(path.join(dir, 'programma', 'leetcode.md'), '# LeetCode\n## Parte 1: Base\n### Settimana 1\n- [ ] two-sum | Two Sum | Easy\n- [ ] 3sum | Tre somme | Medium\n');
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  fs.writeFileSync(path.join(dir, 'leetcode.json'), JSON.stringify({ updated: Math.floor(Date.now() / 1000), solved: [
+    { slug: 'two-sum', title: 'Two <b>Sum</b>', difficulty: 'Easy', date: iso(new Date()) }, { slug: 'x y', title: 'scartato', date: iso(new Date()) }, { slug: 'lungo', title: 'Hard <img src=x onerror=alert(1)>', difficulty: 'Hard', date: '2026-01-02' }] }));
+  await go('#/altro');
+  await waitFor('!!document.querySelector("main a.row[href=\'#/leetcode\']")', 'voce LeetCode in Altro');
+  await ev('document.querySelector("main a.row[href=\'#/leetcode\']").click()');
+  await waitFor('document.querySelectorAll("main section.card").length === 4', 'leetcode con dati');
+  const lcText = await text();
+  assert.match(lcText, /Aggiornato il /);
+  assert.match(lcText, /Two <b>Sum<\/b>/);
+  assert.match(lcText, /Hard <img src=x onerror=alert\(1\)>/);
+  assert.doesNotMatch(lcText, /scartato/);
+  assert.strictEqual(await ev('document.querySelectorAll("main b, main img, main script").length'), 0);
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("main a[href^=http]")].map((a) => a.href + "|" + a.rel)').then((l) => [...new Set(l.map((x) => x.split("|")[1]))]), ['noopener noreferrer']);
+  assert.strictEqual(await ev('[...document.querySelectorAll("main a[href^=http]")].every((a) => a.href.startsWith("https://leetcode.com/problems/"))'), true);
+  assert.strictEqual(await ev('document.querySelectorAll("#nav a").length'), 5);
+  await noOverflow('leetcode'); await targets('leetcode');
+  await go('#/andamento/statistiche');
+  await waitFor('document.querySelectorAll(".weeks .wk").length === 8', 'statistiche');
+  assert.strictEqual(await ev('document.querySelector(".weeks .wk:last-child .count").textContent'), '1');
+  assert.strictEqual(await current(), 'Andamento');
+  assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  await noOverflow('statistiche'); await targets('statistiche');
+  // tocchi ripetuti sulle schede: resta una sola pagina coerente
+  await ev('(() => { for (let i = 0; i < 4; i++) { document.querySelector(".seg a[href$=verifiche]").click(); document.querySelector(".seg a[href$=statistiche]").click(); } })()');
+  await sleep(400);
+  await waitFor('document.querySelectorAll(".weeks").length === 1 && document.querySelectorAll("main h1").length === 1', 'statistiche dopo tocchi ripetuti');
+  await go('#/leetcode'); await go('#/altro');
+
   // Altro: Esci riporta al login e nasconde il menu
   await go('#/altro');
   await waitFor('!!document.querySelector("#esci")', 'altro');

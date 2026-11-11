@@ -166,7 +166,7 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .prose h3:first-child { margin-top: 0; }
 
 /* Andamento */
-.seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s1); background: var(--surface-2); border-radius: var(--r-ctl); padding: var(--s1); margin: 0 0 var(--s4); }
+.seg { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: var(--s1); background: var(--surface-2); border-radius: var(--r-ctl); padding: var(--s1); margin: 0 0 var(--s4); }
 .seg a { min-height: 44px; display: grid; place-items: center; border-radius: 9px; color: var(--muted); text-decoration: none; font-weight: 650; }
 .seg a[aria-current="page"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
 .entry .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
@@ -207,3 +207,7 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .cal-items a { display: inline-flex; align-items: center; min-height: 44px; }
 .cal-time { font-variant-numeric: tabular-nums; font-weight: 650; }
 .cal-day p { margin: 0; }
+.weeks .wk { display: grid; grid-template-columns: 5.5rem 1fr 2rem; align-items: center; gap: var(--s3); min-height: 32px; }
+.weeks .wk .bar { margin: 0; }
+.weeks .wk .count { text-align: right; color: var(--ink); }
+.entry .top .state { width: 20px; height: 20px; color: var(--primary); }
