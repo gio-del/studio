@@ -29,6 +29,7 @@ function cdp(wsUrl) {
 
 test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione', { skip: !CHROME && 'Chromium non installato', timeout: 120000 }, async (t) => {
   const dir = makeFixture();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
   const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -163,7 +164,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);
 
   // Altre pagine
-  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro']]) {
+  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);
     await waitFor('!!document.querySelector(' + JSON.stringify(probe) + ')', hash);
     assert.match(await text(), re, hash);
@@ -171,6 +172,14 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
     assert.strictEqual(await current(), tab, hash);
     await noOverflow(hash); await targets(hash);
   }
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-day").length'), 7, 'sette giorni');
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-day.is-today").length'), 1, 'un solo oggi');
+  // da «Altro» alla pagina con tocchi ripetuti: una sola pagina, nessun errore
+  await go('#/altro');
+  await waitFor('!!document.querySelector("a.row[href=\\"#/calendario\\"]")', 'voce Calendario in Altro');
+  await ev('(() => { const a = document.querySelector("a.row[href=\\"#/calendario\\"]"); a.click(); a.click(); a.click(); return true; })()');
+  await waitFor('document.querySelectorAll("section.cal-day").length === 7', 'calendario dopo i tocchi');
+  assert.strictEqual(await ev('document.querySelectorAll("main h1").length'), 1);
   await go('#/andamento/sessioni');
   await waitFor('!!document.querySelector("main section.card")', 'sessioni');
   assert.match(await text(), /<img src=x onerror=alert\(1\)>/);
