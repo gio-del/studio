@@ -29,6 +29,7 @@ function cdp(wsUrl) {
 
 test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione', { skip: !CHROME && 'Chromium non installato', timeout: 120000 }, async (t) => {
   const dir = makeFixture();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
   const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -189,7 +190,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);
 
   // Altre pagine
-  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro']]) {
+  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);
     await waitFor('!!document.querySelector(' + JSON.stringify(probe) + ')', hash);
     assert.match(await text(), re, hash);
@@ -197,10 +198,31 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
     assert.strictEqual(await current(), tab, hash);
     await noOverflow(hash); await targets(hash);
   }
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-day").length'), 7, 'sette giorni');
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-day.is-today").length'), 1, 'un solo oggi');
+  // da «Altro» alla pagina con tocchi ripetuti: una sola pagina, nessun errore
+  await go('#/altro');
+  await waitFor('!!document.querySelector("a.row[href=\\"#/calendario\\"]")', 'voce Calendario in Altro');
+  await ev('(() => { const a = document.querySelector("a.row[href=\\"#/calendario\\"]"); a.click(); a.click(); a.click(); return true; })()');
+  await waitFor('document.querySelectorAll("section.cal-day").length === 7', 'calendario dopo i tocchi');
+  assert.strictEqual(await ev('document.querySelectorAll("main h1").length'), 1);
   await go('#/andamento/sessioni');
   await waitFor('!!document.querySelector("main section.card")', 'sessioni');
   assert.match(await text(), /<img src=x onerror=alert\(1\)>/);
   assert.match(await text(), /riga libera strana/);
+  // Statistiche: sotto Andamento, barre senza stili inline, niente scroll, bersagli e tocchi ripetuti
+  await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche');
+  assert.match(await text(), /Questa settimana/);
+  assert.match(await text(), /Ore per settimana/);
+  assert.strictEqual(await ev('document.querySelectorAll("main [style]").length >= 0 && document.querySelectorAll(".weeks:not(.lc) .bar").length'), 8);
+  assert.strictEqual(await current(), 'Andamento');
+  assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  await noOverflow('statistiche'); await targets('statistiche');
+  assert.strictEqual(await ev('document.querySelectorAll("main script, main img").length'), 0);
+  for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
+  await sleep(300);
+  assert.strictEqual(await ev('document.querySelectorAll(".stat-hero").length'), 1, 'tocchi ripetuti: una sola pagina');
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
@@ -221,6 +243,41 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("#nav").getBoundingClientRect().right <= document.querySelector("main").getBoundingClientRect().left'), true);
   await noOverflow('schermo largo');
   await c.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 1, mobile: true });
+
+  // LeetCode: senza file la pagina lo dice; con file ostile mostra solo testo; Statistiche per settimana
+  await go('#/leetcode');
+  await waitFor('!!document.querySelector("main h1") && document.querySelector("main h1").textContent === "LeetCode" && document.querySelector("main .empty")', 'leetcode vuoto');
+  assert.match(await text(), /Nessun dato ancora/);
+  assert.strictEqual(await current(), 'Altro');
+  fs.writeFileSync(path.join(dir, 'programma', 'leetcode.md'), '# LeetCode\n## Parte 1: Base\n### Settimana 1\n- [ ] two-sum | Two Sum | Easy\n- [ ] 3sum | Tre somme | Medium\n');
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  fs.writeFileSync(path.join(dir, 'leetcode.json'), JSON.stringify({ updated: Math.floor(Date.now() / 1000), solved: [
+    { slug: 'two-sum', title: 'Two <b>Sum</b>', difficulty: 'Easy', date: iso(new Date()) }, { slug: 'x y', title: 'scartato', date: iso(new Date()) }, { slug: 'lungo', title: 'Hard <img src=x onerror=alert(1)>', difficulty: 'Hard', date: '2026-01-02' }] }));
+  await go('#/altro');
+  await waitFor('!!document.querySelector("main a.row[href=\'#/leetcode\']")', 'voce LeetCode in Altro');
+  await ev('document.querySelector("main a.row[href=\'#/leetcode\']").click()');
+  await waitFor('document.querySelectorAll("main section.card").length === 4', 'leetcode con dati');
+  const lcText = await text();
+  assert.match(lcText, /Aggiornato il /);
+  assert.match(lcText, /Two <b>Sum<\/b>/);
+  assert.match(lcText, /Hard <img src=x onerror=alert\(1\)>/);
+  assert.doesNotMatch(lcText, /scartato/);
+  assert.strictEqual(await ev('document.querySelectorAll("main b, main img, main script").length'), 0);
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("main a[href^=http]")].map((a) => a.href + "|" + a.rel)').then((l) => [...new Set(l.map((x) => x.split("|")[1]))]), ['noopener noreferrer']);
+  assert.strictEqual(await ev('[...document.querySelectorAll("main a[href^=http]")].every((a) => a.href.startsWith("https://leetcode.com/problems/"))'), true);
+  assert.strictEqual(await ev('document.querySelectorAll("#nav a").length'), 5);
+  await noOverflow('leetcode'); await targets('leetcode');
+  await go('#/andamento/statistiche');
+  await waitFor('document.querySelectorAll(".weeks.lc .wrow").length === 8', 'statistiche');
+  assert.strictEqual(await ev('document.querySelector(".weeks.lc .wrow:last-child .count").textContent'), '1');
+  assert.strictEqual(await current(), 'Andamento');
+  assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  await noOverflow('statistiche'); await targets('statistiche');
+  // tocchi ripetuti sulle schede: resta una sola pagina coerente
+  await ev('(() => { for (let i = 0; i < 4; i++) { document.querySelector(".seg a[href$=verifiche]").click(); document.querySelector(".seg a[href$=statistiche]").click(); } })()');
+  await sleep(400);
+  await waitFor('document.querySelectorAll(".weeks").length === 2 && document.querySelectorAll("main h1").length === 1', 'statistiche dopo tocchi ripetuti');
+  await go('#/leetcode'); await go('#/altro');
 
   // Altro: Esci riporta al login e nasconde il menu
   await go('#/altro');

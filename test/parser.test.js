@@ -56,7 +56,9 @@ test('safeUrl: solo http(s)', () => {
 
 test('progressi e segnalazioni: righe giuste e sbagliate', () => {
   const rows = P.parseProgress('- 2026-11-02 | algo | passo | 8/10 | lacuna | con barra\nstrana\n');
-  assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra' });
+  assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra', minutes: 0 });
+  assert.strictEqual(P.parseProgress('- 2026-11-02 | algo | passo | ok | nessuna | 45 min')[0].minutes, 45);
+  assert.strictEqual(P.parseProgress('- 2026-11-02 | algo | passo | ok | 9999 min')[0].minutes, 0);
   assert.deepStrictEqual(rows[1], { raw: 'strana' });
   const rep = P.parseReports('- 2026-11-09 12:00 | algo | manca | testo | con barra\nqualcosa\n');
   assert.deepStrictEqual(rep[0], { date: '2026-11-09 12:00', area: 'algo', type: 'manca', text: 'testo | con barra' });
@@ -113,4 +115,9 @@ test('fatto: riga con i minuti, lettura e limiti', () => {
   assert.deepStrictEqual([0, 1, 999, 1000, 1.5, '5', NaN].map(P.validMinutes), [false, true, true, false, false, false, false]);
   const rows = P.parseReports(`- 2026-11-09 12:00 | algo | fatto | ${t}`);
   assert.strictEqual(rows[0].type, 'fatto');
+});
+
+test('progressi: minuti facoltativi dalla riga', () => {
+  const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
+  assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));
 });

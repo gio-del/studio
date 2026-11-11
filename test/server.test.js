@@ -26,7 +26,7 @@ test('configurazione: serve password e cartella, ascolta in locale', () => {
 
 test('senza login niente dati; password sbagliata rifiutata', async (t) => {
   const { call } = await start(t);
-  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback', '/api/verifiche', '/api/lacune']) assert.strictEqual((await call('GET', p)).status, 401, p);
+  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback', '/api/verifiche', '/api/lacune', '/api/stats']) assert.strictEqual((await call('GET', p)).status, 401, p);
   assert.strictEqual((await call('POST', '/api/segnala', { area: 'algoritmi', type: 'altro', text: 'x' })).status, 401);
   assert.strictEqual((await call('POST', '/api/login', { user: 'studio', password: 'no' })).status, 401);
 });
@@ -71,10 +71,29 @@ test('risorse, progressi, feedback: link filtrati, righe strane come testo', asy
   const links = res.areas.find((a) => a.area === 'algoritmi').blocks.flatMap((b) => b.parts).filter((x) => x.url !== undefined);
   assert.deepStrictEqual(links.map((x) => x.url), ['https://example.com/a', null]);
   const pr = await (await call('GET', '/api/progress', null, c)).json();
-  assert.strictEqual(pr.rows.length, 3);
+  assert.strictEqual(pr.rows.length, 6);
   assert.deepStrictEqual(pr.rows[2], { raw: 'riga libera strana' });
   const fb = await (await call('GET', '/api/feedback', null, c)).json();
   assert.deepStrictEqual(fb.open, []);
+});
+
+test('statistiche: ore per settimana, per area, verifiche superate', async (t) => {
+  const { call, login } = await start(t);
+  const c = await login();
+  const st = await (await call('GET', '/api/stats', null, c)).json();
+  assert.strictEqual(st.goalMinutes, 420);
+  assert.strictEqual(st.weeks.length, 8);
+  assert.strictEqual(st.weeks[7].start, '2026-11-09');
+  assert.strictEqual(st.weeks[7].minutes, 120);
+  assert.strictEqual(st.weeks[6].minutes, 45, 'la settimana scorsa: solo la riga con i minuti');
+  assert.strictEqual(st.weeks.reduce((n, w) => n + w.minutes, 0), 165, 'la riga di settembre è fuori dalle 8 settimane');
+  const algo = st.areas.find((a) => a.area === 'algoritmi');
+  assert.strictEqual(algo.minutes, 195);
+  assert.strictEqual(algo.weekMinutes, 90);
+  assert.deepStrictEqual([algo.verifiche, algo.superate], [2, 1], 'parziale non conta, superata sì');
+  assert.strictEqual(algo.done, 1);
+  assert.strictEqual(st.totals.minutes, 225);
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test('segnala: scrive una riga sola, la rilegge, rifiuta il resto', async (t) => {
@@ -149,7 +168,7 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   assert.strictEqual(ov.date, '2026-11-09');
   assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'suggerita' }, 'senza calendario: l\'unica area con passi aperti');
   assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi', 'Strana']);
-  assert.strictEqual(ov.areas[0].last, '2026-11-02');
+  assert.strictEqual(ov.areas[0].last, '2026-11-09');
   assert.strictEqual(ov.gapsTotal, 2);
   assert.strictEqual(ov.firstGaps.length, 2);
   // il 2026-11-09 è lunedì: vale la riga di lunedì; un'area senza passi aperti o sconosciuta non diventa «oggi»
@@ -205,4 +224,121 @@ test('fatto: richieste in parallelo sullo stesso passo scrivono una riga; testo 
   const lines = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
   assert.strictEqual(lines.length, 1);
   assert.match(lines[0], /\| fatto \| \[passo: Parte 1, Settimana 1, Passo <script>alert\(1\)<\/script>\] 20 min$/);
+});
+
+test('leetcode: file assente, vuoto, campi strani; passi del programma; statistiche per settimana', async (t) => {
+  const { call, login, dir } = await start(t);
+  const ck = await login();
+  const get = async (p) => (await call('GET', p, null, ck)).json();
+  // assente
+  let lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc, { updated: null, solved: [], steps: [] });
+  let st = await get('/api/stats');
+  assert.strictEqual(st.weeks.length, 8);
+  assert.strictEqual(st.weeks[7].start, '2026-11-09', 'il 9 nov 2026 è lunedì');
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
+  // vuoto e non JSON
+  for (const body of ['', '   ', 'non json', '[]', 'null', '{"solved": 5}']) {
+    fs.writeFileSync(path.join(dir, 'leetcode.json'), body);
+    assert.deepStrictEqual((await get('/api/leetcode')).solved, [], JSON.stringify(body));
+    assert.strictEqual((await call('GET', '/api/stats', null, ck)).status, 200);
+  }
+  // campi strani: valide solo le voci giuste
+  const ok = (slug, date, extra = {}) => ({ slug, title: 'T ' + slug, difficulty: 'Easy', date, ...extra });
+  fs.writeFileSync(path.join(dir, 'leetcode.json'), JSON.stringify({
+    updated: 1794000000,
+    solved: [ok('two-sum', '2026-11-10'), ok('two-sum', '2026-11-01'), ok('add-two-numbers', '2026-11-03', { difficulty: 'Brutale' }),
+      ok('../etc/passwd', '2026-11-10'), ok('Bad Slug', '2026-11-10'), ok('bad-date', '2026-02-30'), ok('bad-date2', '10/11/2026'), ok('num-date', 20261110),
+      { slug: 5, date: '2026-11-10' }, { slug: 'hostile', title: '<img src=x onerror=alert(1)>', difficulty: null, date: '2026-10-20' },
+      { slug: 'no-title', date: '2026-10-19', title: 7 }, null, 'x', [], ok('old-one', '2025-01-01'), ok('future', '2026-11-12')],
+  }));
+  lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc.solved.map((e) => e.slug), ['future', 'two-sum', 'add-two-numbers', 'hostile', 'no-title', 'old-one']);
+  assert.strictEqual(lc.updated, 1794000000);
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'add-two-numbers').difficulty, null);
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'no-title').title, 'no-title');
+  assert.strictEqual(lc.solved.find((e) => e.slug === 'two-sum').url, 'https://leetcode.com/problems/two-sum/');
+  st = await get('/api/stats');
+  // settimane da lunedì: 21 set … 9 nov; il 2025 resta fuori, la voce del 12 nov cade nella settimana in corso
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 2, 0, 1, 2]);
+  // passi del programma: fatti se `[x]` o se lo slug è in solved; righe senza slug valido saltate
+  fs.writeFileSync(path.join(dir, 'programma', 'leetcode.md'), '# LeetCode\n\n## Parte 1: Base\n\n### Settimana 1\n- [ ] two-sum | Two Sum | Easy\n- [ ] valid-parentheses | Valid Parentheses | Easy\n- [x] merge-intervals | Merge Intervals | Medium\n- [ ] ../x | Cattivo | Hard\n- [ ] solo testo\n- [ ] median-of-two | Mediana | Impossibile\n');
+  lc = await get('/api/leetcode');
+  assert.deepStrictEqual(lc.steps.map((s) => [s.slug, s.done, s.difficulty]),
+    [['two-sum', true, 'Easy'], ['valid-parentheses', false, 'Easy'], ['merge-intervals', true, 'Medium'], ['median-of-two', false, null]]);
+  assert.strictEqual(lc.steps[1].url, 'https://leetcode.com/problems/valid-parentheses/');
+  assert.strictEqual((await call('GET', '/api/leetcode')).status, 401);
+});
+
+test('note e schede accanto al passo, con link a Obsidian', async (t) => {
+  const dir = makeFixture();
+  const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', HS_OBSIDIAN_VAULT: 'Il mio vault' });
+  const server = createServer({ config });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'segreto' }) })).headers.get('set-cookie').split(';')[0];
+  const get = async () => (await (await fetch(`${base}/api/area/algoritmi`, { headers: { cookie } })).json()).parts[0].weeks[0].steps;
+
+  // cartelle assenti: nessun errore, nessun documento
+  assert.deepStrictEqual((await get()).map((s) => s.docs), [[], [], []]);
+  // cartelle vuote
+  fs.mkdirSync(path.join(dir, 'Note')); fs.mkdirSync(path.join(dir, 'Schede'));
+  assert.deepStrictEqual((await get()).map((s) => s.docs), [[], [], []]);
+
+  fs.writeFileSync(path.join(dir, 'Schede', '2026-11-06 algoritmi - Array e stringhe.md'), '# Array\nConcetti chiave: indici <b>x</b>\n[[Libro]]\n');
+  fs.writeFileSync(path.join(dir, 'Schede', '2026-11-06 sistemi - Array e stringhe.md'), 'altra area');
+  fs.writeFileSync(path.join(dir, 'Note', 'mie "note" <img> & più.md'), 'Appunti su Array e stringhe\nsecondo rigo');
+  fs.writeFileSync(path.join(dir, 'Note', 'altro.md'), 'niente di collegato');
+  const before = fs.readdirSync(path.join(dir, 'Note')).concat(fs.readdirSync(path.join(dir, 'Schede')));
+  const docs = (await get())[1].docs;
+  assert.deepStrictEqual(docs.map((d) => d.kind), ['Schede', 'Note']);
+  assert.strictEqual(docs[0].title, 'Array');
+  assert.match(docs[0].preview, /<b>x<\/b>/);
+  assert.strictEqual(docs[0].url, 'obsidian://open?vault=Il%20mio%20vault&file=Studio%2FSchede%2F2026-11-06%20algoritmi%20-%20Array%20e%20stringhe.md');
+  assert.strictEqual(docs[1].name, 'mie "note" <img> & più.md');
+  assert.ok(docs[1].url.includes(encodeURIComponent('Studio/Note/mie "note" <img> & più.md')));
+  assert.deepStrictEqual((await get())[0].docs, []);
+  // sola lettura: nessuna scrittura in Note/ e Schede/
+  assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Note')).concat(fs.readdirSync(path.join(dir, 'Schede'))), before);
+});
+
+test('senza HS_OBSIDIAN_VAULT il link non compare', async (t) => {
+  const dir = makeFixture();
+  fs.mkdirSync(path.join(dir, 'Note'));
+  fs.writeFileSync(path.join(dir, 'Note', 'a.md'), 'Hash map');
+  const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'x', PORT: '0' });
+  assert.strictEqual(config.obsidianVault, null);
+  const server = createServer({ config });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'x' }) })).headers.get('set-cookie').split(';')[0];
+  const a = await (await fetch(`${base}/api/area/algoritmi`, { headers: { cookie } })).json();
+  const d = a.parts[0].weeks[1].steps[0].docs;
+  assert.strictEqual(d.length, 1);
+  assert.strictEqual(d[0].url, null);
+});
+
+test('calendario: la settimana con voci e minuti fatti, vuota se manca il file', async (t) => {
+  const { call, login, dir } = await start(t);
+  assert.strictEqual((await call('GET', '/api/calendario')).status, 401);
+  const c = await login();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mer | 18:30 | 60\n- Sistemi | lun | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\nriga strana\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 25 min\n- 2026-11-09 | sistemi | lettura | ok | 20 min\n- 2026-11-02 | algoritmi | vecchio | ok | 99 min\n');
+  const r = await (await call('GET', '/api/calendario', null, c)).json();
+  assert.deepStrictEqual(r.days.map((d) => d.day), ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']);
+  assert.deepStrictEqual(r.days.map((d) => d.date)[0], '2026-11-09');
+  assert.strictEqual(r.days[0].today, true);
+  assert.deepStrictEqual(r.days[0].items.map((e) => [e.time, e.title, e.minutes]), [['07:15', 'Sistemi', 30], ['18:30', 'Algoritmi', 60]]);
+  assert.strictEqual(r.days[0].planned, 90);
+  assert.strictEqual(r.days[0].done, 45);
+  assert.strictEqual(r.days[1].items.length, 0);
+  assert.strictEqual(r.days[6].items[0].area, null);
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '\u0000 niente di valido\n');
+  const e = await call('GET', '/api/calendario', null, c);
+  assert.strictEqual(e.status, 200);
+  assert.ok((await e.json()).days.every((d) => d.items.length === 0));
+  fs.rmSync(path.join(dir, 'calendario.md'));
+  assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
 });
