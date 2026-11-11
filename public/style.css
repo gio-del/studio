@@ -151,6 +151,11 @@ li.done .step-text { color: var(--muted); }
 li.next button.step .state { color: var(--primary); }
 li.next .step-text { font-weight: 650; }
 .step-panel { padding: 0 0 var(--s4) 32px; }
+.docs { margin-bottom: var(--s3); }
+.doc { padding: var(--s2) var(--s3); margin-bottom: var(--s2); background: var(--surface-2); border-radius: var(--r-ctl); min-width: 0; }
+.doc-title, .doc-prev { overflow-wrap: anywhere; margin: 0; }
+.doc-title { font-weight: 600; }
+.doc .btn { margin-top: var(--s2); }
 .step-panel .res { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: var(--s2); }
 .step-panel .res .ic { margin-top: 2px; color: var(--muted); }
 form.report { margin-top: var(--s3); padding: var(--s3); background: var(--surface-2); border-radius: var(--r-ctl); }

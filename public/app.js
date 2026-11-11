@@ -220,6 +220,16 @@ async function pageProgramma(main) {
   }
 }
 
+// Note dell'owner e schede del tutor che riguardano il passo (sola lettura); il link a Obsidian c'è solo se l'app lo conosce.
+function docsBlock(docs) {
+  if (!docs || !docs.length) return null;
+  return h('div', { class: 'docs' }, docs.map((d) => h('div', { class: 'doc' },
+    h('div', { class: 'small muted' }, d.kind === 'Note' ? 'Nota' : 'Scheda'),
+    h('div', { class: 'doc-title' }, d.title),
+    d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
+    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null)));
+}
+
 function stepItem(a, p, w, s, i, isNext) {
   const id = `passo-${p.n}-${w.n}-${i}`;
   const rb = reportBox(a.area, { part: p.n, week: w.n, index: i });
@@ -227,6 +237,7 @@ function stepItem(a, p, w, s, i, isNext) {
   const panel = h('div', { class: 'step-panel', id, hidden: isNext ? false : '' },
     res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa')) : null,
     s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
+    docsBlock(s.docs),
     h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, rb.open), rb.holder);
   const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
     icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),

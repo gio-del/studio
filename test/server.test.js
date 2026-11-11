@@ -213,3 +213,53 @@ test('leetcode: file assente, vuoto, campi strani; passi del programma; statisti
   assert.strictEqual(lc.steps[1].url, 'https://leetcode.com/problems/valid-parentheses/');
   assert.strictEqual((await call('GET', '/api/leetcode')).status, 401);
 });
+
+test('note e schede accanto al passo, con link a Obsidian', async (t) => {
+  const dir = makeFixture();
+  const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', HS_OBSIDIAN_VAULT: 'Il mio vault' });
+  const server = createServer({ config });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'segreto' }) })).headers.get('set-cookie').split(';')[0];
+  const get = async () => (await (await fetch(`${base}/api/area/algoritmi`, { headers: { cookie } })).json()).parts[0].weeks[0].steps;
+
+  // cartelle assenti: nessun errore, nessun documento
+  assert.deepStrictEqual((await get()).map((s) => s.docs), [[], [], []]);
+  // cartelle vuote
+  fs.mkdirSync(path.join(dir, 'Note')); fs.mkdirSync(path.join(dir, 'Schede'));
+  assert.deepStrictEqual((await get()).map((s) => s.docs), [[], [], []]);
+
+  fs.writeFileSync(path.join(dir, 'Schede', '2026-11-06 algoritmi - Array e stringhe.md'), '# Array\nConcetti chiave: indici <b>x</b>\n[[Libro]]\n');
+  fs.writeFileSync(path.join(dir, 'Schede', '2026-11-06 sistemi - Array e stringhe.md'), 'altra area');
+  fs.writeFileSync(path.join(dir, 'Note', 'mie "note" <img> & più.md'), 'Appunti su Array e stringhe\nsecondo rigo');
+  fs.writeFileSync(path.join(dir, 'Note', 'altro.md'), 'niente di collegato');
+  const before = fs.readdirSync(path.join(dir, 'Note')).concat(fs.readdirSync(path.join(dir, 'Schede')));
+  const docs = (await get())[1].docs;
+  assert.deepStrictEqual(docs.map((d) => d.kind), ['Schede', 'Note']);
+  assert.strictEqual(docs[0].title, 'Array');
+  assert.match(docs[0].preview, /<b>x<\/b>/);
+  assert.strictEqual(docs[0].url, 'obsidian://open?vault=Il%20mio%20vault&file=Studio%2FSchede%2F2026-11-06%20algoritmi%20-%20Array%20e%20stringhe.md');
+  assert.strictEqual(docs[1].name, 'mie "note" <img> & più.md');
+  assert.ok(docs[1].url.includes(encodeURIComponent('Studio/Note/mie "note" <img> & più.md')));
+  assert.deepStrictEqual((await get())[0].docs, []);
+  // sola lettura: nessuna scrittura in Note/ e Schede/
+  assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Note')).concat(fs.readdirSync(path.join(dir, 'Schede'))), before);
+});
+
+test('senza HS_OBSIDIAN_VAULT il link non compare', async (t) => {
+  const dir = makeFixture();
+  fs.mkdirSync(path.join(dir, 'Note'));
+  fs.writeFileSync(path.join(dir, 'Note', 'a.md'), 'Hash map');
+  const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'x', PORT: '0' });
+  assert.strictEqual(config.obsidianVault, null);
+  const server = createServer({ config });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'x' }) })).headers.get('set-cookie').split(';')[0];
+  const a = await (await fetch(`${base}/api/area/algoritmi`, { headers: { cookie } })).json();
+  const d = a.parts[0].weeks[1].steps[0].docs;
+  assert.strictEqual(d.length, 1);
+  assert.strictEqual(d[0].url, null);
+});
