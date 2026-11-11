@@ -305,3 +305,14 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   fs.rmSync(path.join(dir, 'calendario.md'));
   assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
 });
+
+test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) => {
+  const { call, login, dir } = await start(t);
+  assert.strictEqual((await call('GET', '/api/riassunto')).status, 401);
+  const r = await (await call('GET', '/api/riassunto', null, await login())).json();
+  assert.deepStrictEqual(r, { week: '2026-11-02', goalMinutes: 420, minutes: 45, sessions: 2, partsClosed: 1, gapsOpen: 2, areas: [{ area: 'algoritmi', minutes: 45 }] });
+  const { execFileSync } = require('node:child_process');
+  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'riassunto.js')], { env: { ...process.env, STUDIO_DIR: dir } });
+  assert.strictEqual(JSON.parse(out).week.length, 10);
+  assert.throws(() => execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'riassunto.js')], { env: { PATH: process.env.PATH }, stdio: 'pipe' }));
+});

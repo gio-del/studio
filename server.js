@@ -111,6 +111,7 @@ function createServer({ config, now = Date.now }) {
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
     if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });
     if (p === '/api/stats') return send(res, 200, await data.stats());
+    if (p === '/api/riassunto') return send(res, 200, await data.riassunto());
     if (p === '/api/progress') return send(res, 200, { ...(await data.progress()), titles: await data.titles() });
     if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), titles: await data.titles(), session });
     if (p === '/api/leetcode') return send(res, 200, await data.leetcode());
