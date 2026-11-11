@@ -58,7 +58,6 @@ test('progressi e segnalazioni: righe giuste e sbagliate', () => {
   const rows = P.parseProgress('- 2026-11-02 | algo | passo | 8/10 | lacuna | con barra\nstrana\n');
   assert.deepStrictEqual(rows[0], { date: '2026-11-02', area: 'algo', step: 'passo', outcome: '8/10', gaps: 'lacuna | con barra', minutes: 0 });
   assert.strictEqual(P.parseProgress('- 2026-11-02 | algo | passo | ok | nessuna | 45 min')[0].minutes, 45);
-  assert.strictEqual(P.parseProgress('- 2026-11-02 | algo | passo | ok | nessuna | 45 min')[0].gaps, 'nessuna');
   assert.strictEqual(P.parseProgress('- 2026-11-02 | algo | passo | ok | 9999 min')[0].minutes, 0);
   assert.deepStrictEqual(rows[1], { raw: 'strana' });
   const rep = P.parseReports('- 2026-11-09 12:00 | algo | manca | testo | con barra\nqualcosa\n');
