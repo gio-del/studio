@@ -224,6 +224,8 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   const { call, login, dir } = await start(t);
   assert.strictEqual((await call('GET', '/api/calendario')).status, 401);
   const c = await login();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mer | 18:30 | 60\n- Sistemi | lun | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\nriga strana\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 25 min\n- 2026-11-09 | sistemi | lettura | ok | 20 min\n- 2026-11-02 | algoritmi | vecchio | ok | 99 min\n');
   const r = await (await call('GET', '/api/calendario', null, c)).json();
   assert.deepStrictEqual(r.days.map((d) => d.day), ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']);
   assert.deepStrictEqual(r.days.map((d) => d.date)[0], '2026-11-09');
