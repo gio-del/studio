@@ -29,6 +29,7 @@ function cdp(wsUrl) {
 
 test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione', { skip: !CHROME && 'Chromium non installato', timeout: 120000 }, async (t) => {
   const dir = makeFixture();
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mer | 18:30 | 60\n- Sistemi | lun | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
   const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

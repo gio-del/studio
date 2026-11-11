@@ -230,7 +230,7 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   assert.deepStrictEqual(r.days.map((d) => d.day), ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom']);
   assert.deepStrictEqual(r.days.map((d) => d.date)[0], '2026-11-09');
   assert.strictEqual(r.days[0].today, true);
-  assert.deepStrictEqual(r.days[0].items.map((e) => [e.time, e.title, e.minutes]), [['07:15', 'Sistemi', 30], ['18:30', 'algoritmi', 60]]);
+  assert.deepStrictEqual(r.days[0].items.map((e) => [e.time, e.title, e.minutes]), [['07:15', 'Sistemi', 30], ['18:30', 'Algoritmi', 60]]);
   assert.strictEqual(r.days[0].planned, 90);
   assert.strictEqual(r.days[0].done, 45);
   assert.strictEqual(r.days[1].items.length, 0);
