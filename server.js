@@ -31,13 +31,15 @@ function readConfig(env) {
     // Facoltativi: dove aprire la sessione del tutor (URL http(s) o solo il nome); nessun valore nel repo.
     sessionUrl: /^https?:\/\/\S+$/i.test(env.STUDIO_SESSION_URL || '') ? env.STUDIO_SESSION_URL : null,
     sessionName: (env.STUDIO_SESSION_NAME || '').trim().slice(0, 60) || null,
+    // Facoltativo: nome del vault di Obsidian per i link «Apri in Obsidian»; senza, i link non compaiono.
+    obsidianVault: /^[^\u0000-\u001f\u007f]{1,100}$/.test((env.HS_OBSIDIAN_VAULT || '').trim()) ? env.HS_OBSIDIAN_VAULT.trim() : null,
     user: env.AUTH_USER || 'studio',
     password,
   };
 }
 
 function createServer({ config, now = Date.now }) {
-  const data = createData(config.studioDir, now);
+  const data = createData(config.studioDir, now, { obsidianVault: config.obsidianVault });
   const auth = createAuth({ user: config.user, password: config.password, now });
   const publicDir = path.join(__dirname, 'public');
 
