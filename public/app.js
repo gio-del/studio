@@ -315,18 +315,63 @@ function updatedLine(ts) {
   return `Aggiornato il ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}, ${p2(d.getHours())}:${p2(d.getMinutes())}`;
 }
 
-async function tabStatistiche(main) {
-  const s = await api('/api/stats');
-  const max = Math.max(1, ...s.leetcode);
-  const total = s.leetcode.reduce((a, b) => a + b, 0);
+
+// Riempimento di una barra: via CSSOM, gli attributi style inline sono vietati dalla CSP.
+function fillSpan(pct) { const s = h('span'); s.style.width = `${pct}%`; return s; }
+// Ore e minuti: 90 -> «1 h 30», 45 -> «45 min».
+function hours(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ''}`;
+}
+// Esercizi LeetCode per settimana (stesso ordine di s.weeks, la più vecchia per prima nei dati).
+function leetcodeWeeks(main, s) {
+  const counts = s.leetcode || [];
+  const max = Math.max(1, ...counts);
+  const total = counts.reduce((a, b) => a + b, 0);
   main.append(h('h2', null, 'LeetCode, esercizi per settimana'), h('p', { class: 'small muted' }, updatedLine(s.updated)));
-  const card = h('section', { class: 'card weeks', 'aria-label': 'Esercizi LeetCode per settimana' });
+  const card = h('section', { class: 'card weeks lc', 'aria-label': 'Esercizi LeetCode per settimana' });
   s.weeks.forEach((w, i) => {
-    const b = h('div', { class: 'bar', 'aria-hidden': 'true' }); const f = h('span'); f.style.width = `${Math.round((100 * s.leetcode[i]) / max)}%`; b.append(f);
-    card.append(h('div', { class: 'wk' }, h('span', { class: 'small muted lbl' }, `dal ${rangeLabel(w)}`), b, h('span', { class: 'count' }, String(s.leetcode[i]))));
+    card.append(h('div', { class: 'wrow' }, h('span', { class: 'wl' }, `dal ${rangeLabel(w.start)}`),
+      h('div', { class: 'bar', 'aria-hidden': 'true' }, fillSpan(Math.round((100 * (counts[i] || 0)) / max))), h('span', { class: 'count' }, String(counts[i] || 0))));
   });
   main.append(card, h('p', { class: 'small muted' }, total ? `${plural(total, 'esercizio', 'esercizi')} nelle ultime 8 settimane.` : 'Nessun esercizio nelle ultime 8 settimane.'),
     h('a', { class: 'btn ghost', href: '#/leetcode' }, icon('codice'), 'Apri LeetCode'));
+}
+
+async function pageStatistiche(main) {
+  const s = await api('/api/stats');
+  const goal = s.goalMinutes;
+  const cur = s.weeks[s.weeks.length - 1];
+  const pct = Math.min(100, Math.round((100 * cur.minutes) / goal));
+  main.append(h('section', { class: 'card stat-hero' }, h('p', { class: 'overline' }, 'Questa settimana'),
+    h('p', { class: 'big' }, hours(cur.minutes), h('span', { class: 'muted' }, ` su ${hours(goal)}`)),
+    h('div', { class: `bar goalbar${cur.minutes >= goal ? ' reached' : ''}`, role: 'progressbar', 'aria-label': 'Ore della settimana', 'aria-valuemin': 0, 'aria-valuemax': goal, 'aria-valuenow': Math.min(cur.minutes, goal) }, fillSpan(pct)),
+    h('p', { class: 'small muted' }, cur.minutes >= goal ? 'Obiettivo raggiunto.' : `Mancano ${hours(goal - cur.minutes)} all'obiettivo.`)));
+  if (!s.weeks.some((w) => w.minutes) && !s.areas.some((x) => x.sessions)) main.append(empty('andamento', 'Ancora nessuna ora registrata', 'Il tutor scrive i minuti di ogni sessione in progressi.md.'));
+  main.append(h('h2', null, 'Ore per settimana'));
+  const wk = h('div', { class: 'card weeks' });
+  for (const w of [...s.weeks].reverse()) {
+    const p = Math.min(100, Math.round((100 * w.minutes) / goal));
+    const lbl = w === cur ? 'Questa' : when(w.start);
+    wk.append(h('div', { class: 'wrow' }, h('span', { class: 'wl' }, lbl),
+      h('div', { class: `bar${w.minutes >= goal ? ' reached' : ''}`, role: 'img', 'aria-label': `Settimana dal ${w.start}: ${hours(w.minutes)} su ${hours(goal)}` }, fillSpan(p)),
+      h('span', { class: 'count' }, hours(w.minutes))));
+  }
+  main.append(wk);
+  main.append(h('h2', null, 'Per area'));
+  const list = h('div', { class: 'list' });
+  for (const a of s.areas) {
+    list.append(h('a', { class: 'row', href: areaHref(a.area) }, h('div', { class: 'grow' },
+      h('div', { class: 'title' }, a.title),
+      bar(a.done, a.total),
+      h('div', { class: 'chips' }, chip(`${a.done}/${a.total} passi`), chip(hours(a.minutes) + ' in tutto'), chip(a.weekMinutes ? `${hours(a.weekMinutes)} questa settimana` : 'ferma questa settimana', a.weekMinutes ? 'pri' : 'gap'),
+        a.verifiche ? chip(`${a.superate}/${a.verifiche} verifiche superate`, a.superate === a.verifiche ? 'ok' : '') : null)),
+      icon('avanti', 'chev')));
+  }
+  if (!s.areas.length) main.append(empty('programma', 'Nessuna area', 'Le aree compaiono quando il tutor scrive il programma.'));
+  else main.append(list);
+  main.append(h('p', { class: 'small muted' }, `In tutto: ${s.totals.done} passi su ${s.totals.total}, ${s.totals.superate} verifiche superate su ${s.totals.verifiche}, ${hours(s.totals.minutes)} di studio.`));
+  leetcodeWeeks(main, s);
 }
 
 async function pageLeetcode(main) {
@@ -352,7 +397,7 @@ async function pageAndamento(main, tab) {
     h('a', { href: '#/andamento/sessioni', 'aria-current': t === 'sessioni' ? 'page' : false }, 'Sessioni'),
     h('a', { href: '#/andamento/verifiche', 'aria-current': t === 'verifiche' ? 'page' : false }, 'Verifiche'),
     h('a', { href: '#/andamento/statistiche', 'aria-current': t === 'statistiche' ? 'page' : false }, 'Statistiche')));
-  if (t === 'statistiche') { await tabStatistiche(main); return; }
+  if (t === 'statistiche') return pageStatistiche(main);
   if (t === 'sessioni') {
     const { rows, titles } = await api('/api/progress');
     if (!rows.length) main.append(empty('andamento', 'Nessuna sessione registrata', 'Il tutor scrive una riga dopo ogni sessione.'));

@@ -23,7 +23,8 @@ una nota <b>strana</b>
 ## Parte 2: Alberi
 Obiettivo: attraversare alberi
 `;
-const PROG = '- 2026-11-02 | algoritmi | Notazione O grande | 8/10 | nessuna\n- 2026-11-03 | sistemi | <img src=x onerror=alert(1)> | ok\nriga libera strana\n';
+const PROG = '- 2026-11-02 | algoritmi | Notazione O grande | 8/10 | nessuna | 45 min\n- 2026-11-03 | sistemi | <img src=x onerror=alert(1)> | ok\nriga libera strana\n'
+  + '- 2026-11-09 | algoritmi | Array | 7/10 | nessuna | 90 min\n- 2026-11-09 | sistemi | Rete | ok | nessuna | 30 min\n- 2026-09-01 | algoritmi | Vecchio | ok | nessuna | 60 min\n';
 
 function makeFixture() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-data-'));

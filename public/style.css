@@ -198,6 +198,15 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .entry .gaps { margin-top: var(--s2); }
 .tabs a { white-space: nowrap; overflow-wrap: normal; }
 
+/* Statistiche */
+.stat-hero .big { font-size: 1.75rem; font-weight: 750; margin: 0; font-variant-numeric: tabular-nums; }
+.stat-hero .big .muted { font-size: 1rem; font-weight: 500; }
+.bar.reached > span { background: var(--ok); }
+.weeks { padding: var(--s2) var(--s4); }
+.wrow { display: grid; grid-template-columns: 64px 1fr auto; align-items: center; gap: var(--s3); min-height: 44px; }
+.wrow .wl { font-size: .875rem; color: var(--muted); white-space: nowrap; }
+.wrow .bar { margin: 0; height: 12px; }
+.wrow .count { min-width: 58px; text-align: right; }
 /* Calendario */
 .cal-day h2 { margin: 0; }
 .cal-day .top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
@@ -207,7 +216,4 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .cal-items a { display: inline-flex; align-items: center; min-height: 44px; }
 .cal-time { font-variant-numeric: tabular-nums; font-weight: 650; }
 .cal-day p { margin: 0; }
-.weeks .wk { display: grid; grid-template-columns: 5.5rem 1fr 2rem; align-items: center; gap: var(--s3); min-height: 32px; }
-.weeks .wk .bar { margin: 0; }
-.weeks .wk .count { text-align: right; color: var(--ink); }
 .entry .top .state { width: 20px; height: 20px; color: var(--primary); }

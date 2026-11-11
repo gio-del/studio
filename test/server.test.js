@@ -26,7 +26,7 @@ test('configurazione: serve password e cartella, ascolta in locale', () => {
 
 test('senza login niente dati; password sbagliata rifiutata', async (t) => {
   const { call } = await start(t);
-  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback', '/api/verifiche', '/api/lacune']) assert.strictEqual((await call('GET', p)).status, 401, p);
+  for (const p of ['/api/overview', '/api/area/algoritmi', '/api/resources', '/api/progress', '/api/feedback', '/api/verifiche', '/api/lacune', '/api/stats']) assert.strictEqual((await call('GET', p)).status, 401, p);
   assert.strictEqual((await call('POST', '/api/segnala', { area: 'algoritmi', type: 'altro', text: 'x' })).status, 401);
   assert.strictEqual((await call('POST', '/api/login', { user: 'studio', password: 'no' })).status, 401);
 });
@@ -71,10 +71,29 @@ test('risorse, progressi, feedback: link filtrati, righe strane come testo', asy
   const links = res.areas.find((a) => a.area === 'algoritmi').blocks.flatMap((b) => b.parts).filter((x) => x.url !== undefined);
   assert.deepStrictEqual(links.map((x) => x.url), ['https://example.com/a', null]);
   const pr = await (await call('GET', '/api/progress', null, c)).json();
-  assert.strictEqual(pr.rows.length, 3);
+  assert.strictEqual(pr.rows.length, 6);
   assert.deepStrictEqual(pr.rows[2], { raw: 'riga libera strana' });
   const fb = await (await call('GET', '/api/feedback', null, c)).json();
   assert.deepStrictEqual(fb.open, []);
+});
+
+test('statistiche: ore per settimana, per area, verifiche superate', async (t) => {
+  const { call, login } = await start(t);
+  const c = await login();
+  const st = await (await call('GET', '/api/stats', null, c)).json();
+  assert.strictEqual(st.goalMinutes, 420);
+  assert.strictEqual(st.weeks.length, 8);
+  assert.strictEqual(st.weeks[7].start, '2026-11-09');
+  assert.strictEqual(st.weeks[7].minutes, 120);
+  assert.strictEqual(st.weeks[6].minutes, 45, 'la settimana scorsa: solo la riga con i minuti');
+  assert.strictEqual(st.weeks.reduce((n, w) => n + w.minutes, 0), 165, 'la riga di settembre è fuori dalle 8 settimane');
+  const algo = st.areas.find((a) => a.area === 'algoritmi');
+  assert.strictEqual(algo.minutes, 195);
+  assert.strictEqual(algo.weekMinutes, 90);
+  assert.deepStrictEqual([algo.verifiche, algo.superate], [2, 1], 'parziale non conta, superata sì');
+  assert.strictEqual(algo.done, 1);
+  assert.strictEqual(st.totals.minutes, 225);
+  assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test('segnala: scrive una riga sola, la rilegge, rifiuta il resto', async (t) => {
@@ -149,7 +168,7 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   assert.strictEqual(ov.date, '2026-11-09');
   assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'suggerita' }, 'senza calendario: l\'unica area con passi aperti');
   assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi', 'Strana']);
-  assert.strictEqual(ov.areas[0].last, '2026-11-02');
+  assert.strictEqual(ov.areas[0].last, '2026-11-09');
   assert.strictEqual(ov.gapsTotal, 2);
   assert.strictEqual(ov.firstGaps.length, 2);
   // il 2026-11-09 è lunedì: vale la riga di lunedì; un'area senza passi aperti o sconosciuta non diventa «oggi»
@@ -179,7 +198,7 @@ test('leetcode: file assente, vuoto, campi strani; passi del programma; statisti
   assert.deepStrictEqual(lc, { updated: null, solved: [], steps: [] });
   let st = await get('/api/stats');
   assert.strictEqual(st.weeks.length, 8);
-  assert.strictEqual(st.weeks[7], '2026-11-09', 'il 9 nov 2026 è lunedì');
+  assert.strictEqual(st.weeks[7].start, '2026-11-09', 'il 9 nov 2026 è lunedì');
   assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
   // vuoto e non JSON
   for (const body of ['', '   ', 'non json', '[]', 'null', '{"solved": 5}']) {

@@ -184,6 +184,19 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("main section.card")', 'sessioni');
   assert.match(await text(), /<img src=x onerror=alert\(1\)>/);
   assert.match(await text(), /riga libera strana/);
+  // Statistiche: sotto Andamento, barre senza stili inline, niente scroll, bersagli e tocchi ripetuti
+  await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche');
+  assert.match(await text(), /Questa settimana/);
+  assert.match(await text(), /Ore per settimana/);
+  assert.strictEqual(await ev('document.querySelectorAll("main [style]").length >= 0 && document.querySelectorAll(".weeks:not(.lc) .bar").length'), 8);
+  assert.strictEqual(await current(), 'Andamento');
+  assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  await noOverflow('statistiche'); await targets('statistiche');
+  assert.strictEqual(await ev('document.querySelectorAll("main script, main img").length'), 0);
+  for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
+  await sleep(300);
+  assert.strictEqual(await ev('document.querySelectorAll(".stat-hero").length'), 1, 'tocchi ripetuti: una sola pagina');
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
@@ -229,15 +242,15 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("#nav a").length'), 5);
   await noOverflow('leetcode'); await targets('leetcode');
   await go('#/andamento/statistiche');
-  await waitFor('document.querySelectorAll(".weeks .wk").length === 8', 'statistiche');
-  assert.strictEqual(await ev('document.querySelector(".weeks .wk:last-child .count").textContent'), '1');
+  await waitFor('document.querySelectorAll(".weeks.lc .wrow").length === 8', 'statistiche');
+  assert.strictEqual(await ev('document.querySelector(".weeks.lc .wrow:last-child .count").textContent'), '1');
   assert.strictEqual(await current(), 'Andamento');
   assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
   await noOverflow('statistiche'); await targets('statistiche');
   // tocchi ripetuti sulle schede: resta una sola pagina coerente
   await ev('(() => { for (let i = 0; i < 4; i++) { document.querySelector(".seg a[href$=verifiche]").click(); document.querySelector(".seg a[href$=statistiche]").click(); } })()');
   await sleep(400);
-  await waitFor('document.querySelectorAll(".weeks").length === 1 && document.querySelectorAll("main h1").length === 1', 'statistiche dopo tocchi ripetuti');
+  await waitFor('document.querySelectorAll(".weeks").length === 2 && document.querySelectorAll("main h1").length === 1', 'statistiche dopo tocchi ripetuti');
   await go('#/leetcode'); await go('#/altro');
 
   // Altro: Esci riporta al login e nasconde il menu
