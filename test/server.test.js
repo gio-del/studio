@@ -414,3 +414,22 @@ test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) =>
   assert.strictEqual(miss.status, 1);
   assert.strictEqual(miss.stdout, '');
 });
+
+test('statistiche: previsione di fine area dal ritmo delle ultime 4 settimane', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  fs.writeFileSync(path.join(dir, 'programma', 'algoritmi.md'), '## Parte 1: A\n### Settimana 1\n- [x] fatto (risorsa: [R](https://e.com), 5 h)\n- [ ] uno (risorsa: [R](https://e.com), 1 h)\n- [ ] due (risorsa: Libro, 1h30)\n- [ ] tre\n');
+  fs.writeFileSync(path.join(dir, 'programma', 'sistemi.md'), '## Parte 1: A\n### Settimana 1\n- [ ] uno (risorsa: Libro, 30 min)\n');
+  fs.writeFileSync(path.join(dir, 'programma', 'strana.md'), '## Parte 1: A\n### Settimana 1\n- [x] fatto\n');
+  // data fissa dei test: 2026-11-12, settimana in corso dal 9 nov; ultime 4 settimane dal 19 ott
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-10 | algoritmi | a | ok | 60 min\n- 2026-11-03 | algoritmi | a | ok | 60 min\n- 2026-10-20 | algoritmi | a | ok | 40 min\n- 2026-10-12 | algoritmi | a | ok | 500 min\n- 2026-10-12 | sistemi | a | ok | 500 min\n');
+  const st = await (await call('GET', '/api/stats', null, c)).json();
+  const algo = st.areas.find((a) => a.area === 'algoritmi');
+  assert.strictEqual(algo.minutesLeft, 60 + 90 + 30, 'passo senza stima: 30 minuti nominali');
+  assert.strictEqual(algo.paceWeek, 40, '(60+60+40+0)/4');
+  assert.strictEqual(algo.weeksLeft, 5, '180 / 40 per eccesso');
+  const sis = st.areas.find((a) => a.area === 'sistemi');
+  assert.deepStrictEqual([sis.minutesLeft, sis.paceWeek, sis.weeksLeft], [30, 0, null], 'ritmo 0: nessuna stima');
+  const done = st.areas.find((a) => a.area === 'strana');
+  assert.strictEqual(done.minutesLeft, 0);
+});

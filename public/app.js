@@ -436,11 +436,13 @@ async function pageStatistiche(main) {
       h('div', { class: 'title' }, a.title),
       bar(a.done, a.total),
       h('div', { class: 'chips' }, chip(`${a.done}/${a.total} passi`), chip(hours(a.minutes) + ' in tutto'), chip(a.weekMinutes ? `${hours(a.weekMinutes)} questa settimana` : 'ferma questa settimana', a.weekMinutes ? 'pri' : 'gap'),
-        a.verifiche ? chip(`${a.superate}/${a.verifiche} verifiche superate`, a.superate === a.verifiche ? 'ok' : '') : null)),
+        a.verifiche ? chip(`${a.superate}/${a.verifiche} verifiche superate`, a.superate === a.verifiche ? 'ok' : '') : null),
+      a.done < a.total ? h('p', { class: 'small muted forecast' }, a.weeksLeft == null ? 'Ritmo troppo basso per stimare.' : `Al ritmo delle ultime 4 settimane: circa ${plural(a.weeksLeft, 'settimana', 'settimane')} alla fine.`) : null),
       icon('avanti', 'chev')));
   }
   if (!s.areas.length) main.append(empty('programma', 'Nessuna area', 'Le aree compaiono quando il tutor scrive il programma.'));
   else main.append(list);
+  if (s.areas.some((x) => x.done < x.total)) main.append(h('p', { class: 'small muted' }, 'Stima: media dei minuti a settimana delle ultime 4 settimane; i passi senza tempo stimato contano 30 minuti.'));
   main.append(h('p', { class: 'small muted' }, `In tutto: ${s.totals.done} passi su ${s.totals.total}, ${s.totals.superate} verifiche superate su ${s.totals.verifiche}, ${hours(s.totals.minutes)} di studio.`));
   leetcodeWeeks(main, s);
 }
