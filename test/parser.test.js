@@ -175,7 +175,7 @@ test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del 
   assert.strictEqual(P.streak([r('2026-11-12', 10), ...rows], cal, '2026-11-12'), 4);
   assert.strictEqual(P.streak([r('2026-11-12', 10), r('2026-11-10', 20)], cal, '2026-11-12'), 1, 'ieri vuoto e non di riposo: serie interrotta');
   assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-09'), 2, 'sab e dom di riposo non interrompono (oggi lun senza studio)');
-  assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-14'), 2, 'oggi di riposo');
+  assert.strictEqual(P.streak([r('2026-11-13', 10), r('2026-11-12', 10)], cal, '2026-11-14'), 2, 'oggi di riposo, senza studio');
   assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-10'), 0, 'lunedì vuoto: interrotta');
   assert.strictEqual(P.streak([r('2026-11-10', 5), r('2026-11-08', 5)], [], '2026-11-10'), 1, 'senza calendario nessun riposo');
 });

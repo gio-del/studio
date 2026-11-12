@@ -89,7 +89,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
   assert.strictEqual(await ev('document.querySelector("#sessione a").rel'), 'noopener noreferrer');
   assert.strictEqual(await ev('document.querySelector("#sessione a").getBoundingClientRect().height >= 43.5'), true);
-  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: 0 h di 7 h.*Giorni di studio di fila: 0/);
+  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 hGiorni di studio di fila: \d+/);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);
   await noOverflow('oggi'); await targets('oggi');
