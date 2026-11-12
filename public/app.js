@@ -23,9 +23,13 @@ const ICONS = {
   andamento: [['path', { d: 'M5 20v-9M12 20V5M19 20v-6' }]],
   altro: [['circle', { cx: 5, cy: 12, r: 1.7 }], ['circle', { cx: 12, cy: 12, r: 1.7 }], ['circle', { cx: 19, cy: 12, r: 1.7 }]],
   fatto: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M8.5 12.5l2.5 2.5 4.5-5' }]],
-  dafare: [['circle', { cx: 12, cy: 12, r: 9 }]],
-  prossimo: [['circle', { cx: 12, cy: 12, r: 9 }], ['circle', { cx: 12, cy: 12, r: 3.5 }]],
+  dafare: [['circle', { cx: 12, cy: 12, r: 4 }]],
+  prossimo: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M10 8.5l5 3.5-5 3.5z' }]],
   avanti: [['path', { d: 'M9 6l6 6-6 6' }]],
+  giu: [['path', { d: 'M6 9l6 6 6-6' }]],
+  su: [['path', { d: 'M12 19V6M6 11l6-6 6 6' }]],
+  nota: [['path', { d: 'M7 3h7l5 5v13H7zM14 3v5h5M10 13h6M10 17h6' }]],
+  aiuto: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M9.6 9.4a2.5 2.5 0 1 1 3.6 2.3c-.8.4-1.2 1-1.2 1.8M12 17v.01' }]],
   indietro: [['path', { d: 'M15 6l-6 6 6 6' }]],
   fuori: [['path', { d: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5' }]],
   segnala: [['path', { d: 'M5 21V4h11l-2 4 2 4H5' }]],
@@ -68,7 +72,8 @@ function toast(msg) {
 }
 
 async function api(path, body) {
-  const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+  let r;
+  try { r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); } catch { throw new Error('Non riesco a raggiungere Studio. Controlla la connessione e riprova.'); }
   if (r.status === 401 && path !== '/api/login') { showLogin(); throw new Error('login'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `Errore ${r.status}`);
@@ -130,7 +135,7 @@ function outcome(text) {
 // Modulo «Segnala»: un tocco apre/chiude, l'invio disabilita il pulsante finché non risponde il server.
 function reportBox(area, step) {
   const holder = h('div');
-  const open = h('button', { class: 'btn ghost', type: 'button', 'aria-expanded': 'false' }, icon('segnala'), 'Segnala');
+  const open = h('button', { class: 'btn quiet', type: 'button', 'aria-expanded': 'false', 'data-act': 'segnala' }, icon('segnala'), 'Segnala un problema');
   let form = null;
   open.addEventListener('click', () => {
     if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
@@ -139,7 +144,7 @@ function reportBox(area, step) {
     const text = h('textarea', { maxlength: 500, 'aria-label': 'Cosa non va', placeholder: 'Cosa non va?' });
     const err = h('div', { class: 'error', role: 'alert' });
     const send = h('button', { class: 'btn', type: 'submit' }, 'Invia');
-    form = h('form', { class: 'report' }, type, text, err, h('div', { class: 'row-btn' }, send));
+    form = h('form', { class: 'report' }, type, text, h('p', { class: 'small muted hint' }, 'Il tutor lo legge alla prossima sessione e sistema il programma.'), err, h('div', { class: 'row-btn' }, send));
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       if (send.disabled) return;
@@ -165,9 +170,9 @@ function guessMinutes(time) {
 }
 
 // «Fatto» con i minuti: scrive una riga che il tutor verifica; il passo resta «da verificare». Un invio solo.
-function doneBox(area, step, time, onSent) {
+function doneBox(area, step, time, onSent, second) {
   const holder = h('div');
-  const open = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false' }, icon('fatto'), 'Fatto');
+  const open = h('button', { class: `btn${second ? ' ghost strong' : ''}`, type: 'button', 'aria-expanded': 'false', 'data-act': 'fatto' }, icon('fatto'), 'Fatto');
   let form = null;
   open.addEventListener('click', () => {
     if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
@@ -175,7 +180,7 @@ function doneBox(area, step, time, onSent) {
     const min = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1, value: guessMinutes(time), 'aria-label': 'Minuti studiati' });
     const err = h('div', { class: 'error', role: 'alert' });
     const send = h('button', { class: 'btn', type: 'submit' }, 'Invia');
-    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, err, h('div', { class: 'row-btn' }, send));
+    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, h('p', { class: 'small muted hint' }, 'Proposti dal tempo previsto: correggili. Il tutor verifica il passo alla prossima sessione.'), err, h('div', { class: 'row-btn' }, send));
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       if (send.disabled) return;
@@ -192,6 +197,70 @@ function doneBox(area, step, time, onSent) {
   });
   return { open, holder };
 }
+
+// Collegamenti a Obsidian: solo quelli che il server costruisce (aprire o creare una nota).
+const obsidianUrl = (u) => (typeof u === 'string' && /^obsidian:\/\/(open|new)\?/.test(u) ? u : null);
+const NOTE_WAIT = 10 * 60 * 1000;
+// «Nuova nota» apre Obsidian con la nota del passo già pronta; quando c'è diventa «Apri la nota». Dopo il tocco vale
+// «creata» per dieci minuti anche se il server non la vede ancora (i file arrivano con un po' di ritardo): niente doppioni.
+function noteBtn(note) {
+  if (!note) return { btn: null, hint: null };
+  const open = obsidianUrl(note.openUrl), create = obsidianUrl(note.newUrl);
+  if (!open || !create) return { btn: null, hint: h('p', { class: 'small muted hint' }, icon('nota'), h('span', null, `La nota di questo passo: in Obsidian, ${note.path}`)) };
+  const key = `nota:${note.path}`;
+  const made = () => { try { return Date.now() - Number(localStorage.getItem(key) || 0) < NOTE_WAIT; } catch { return false; } };
+  const label = h('span');
+  const a = h('a', { class: 'btn ghost', href: create, 'data-act': 'nota' }, icon('nota'), label, icon('fuori'));
+  const sync = () => { const there = note.exists || made(); a.href = there ? open : create; label.textContent = there ? 'Apri la nota' : 'Nuova nota'; };
+  a.addEventListener('click', () => { try { localStorage.setItem(key, String(Date.now())); } catch { /* senza memoria resta «Nuova nota» */ } setTimeout(sync, 500); });
+  sync();
+  return { btn: a, hint: null };
+}
+
+// «Chiedi al tutor»: copia il passo (così non va riscritto) e apre la sessione; se l'app conosce solo il nome dice dove andare.
+function tutorBtn(session, context) {
+  if (!session || (!session.url && !session.name)) return { btn: null, holder: null };
+  const copy = () => { try { navigator.clipboard.writeText(context).then(() => toast('Passo copiato: incollalo al tutor'), () => {}); } catch { /* senza appunti si apre lo stesso */ } };
+  if (isHttp(session.url)) {
+    const a = h('a', { class: 'btn ghost', href: session.url, rel: 'noopener noreferrer', target: '_blank', 'data-act': 'tutor' }, icon('tutor'), 'Chiedi al tutor', icon('fuori'));
+    a.addEventListener('click', copy);
+    return { btn: a, holder: null };
+  }
+  const holder = h('div');
+  const b = h('button', { class: 'btn ghost', type: 'button', 'aria-expanded': 'false', 'data-act': 'tutor' }, icon('tutor'), 'Chiedi al tutor');
+  let tip = null;
+  b.addEventListener('click', () => {
+    if (tip) { tip.remove(); tip = null; b.setAttribute('aria-expanded', 'false'); return; }
+    copy();
+    tip = h('p', { class: 'small muted hint' }, `Apri la sessione «${session.name}» del tutor e incolla: il passo è già copiato.`);
+    holder.append(tip); b.setAttribute('aria-expanded', 'true');
+  });
+  return { btn: b, holder };
+}
+
+// Le azioni di un passo, uguali ovunque (Oggi, in cima all'area, dentro la lista): prima la risorsa, poi «Fatto» a tutta
+// larghezza; sotto nota e tutor (escono dall'app); in fondo «Segnala un problema» e «Come funziona».
+function stepBody(area, title, ref, s, session, onDone) {
+  const rb = reportBox(area, ref);
+  const res = s.resource;
+  const main = isHttp(res && res.url);
+  const pending = h('div', { class: 'chips pending' });
+  const showPending = (min) => { pending.replaceChildren(chip(`Da verificare con il tutor · ${min} min`, 'pri')); };
+  const fb = s.done || s.pending ? null : doneBox(area, ref, s.time, (min) => { showPending(min); fb.open.remove(); if (onDone) onDone(min); }, main);
+  if (s.pending) showPending(s.pending);
+  const nb = noteBtn(s.note);
+  const tb = tutorBtn(session, `Studio, ${title}, parte ${ref.part}, settimana ${ref.week}. Passo: ${s.text}\nDomanda: `);
+  return h('div', { class: 'step-body' },
+    res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa', main ? null : h('span', { class: 'muted' }, ' (senza link)'))) : null,
+    docsBlock(s.docs), pending,
+    h('div', { class: 'main-actions' }, main ? extBtn('Apri la risorsa', res.url) : null,
+      (s.links || []).map((l) => extBtn(l.title ? `Apri: ${l.title}` : 'Apri un’altra risorsa', l.url, 'ghost')), fb ? fb.open : null),
+    fb ? fb.holder : null,
+    nb.btn || tb.btn ? h('div', { class: 'side-actions' }, nb.btn, tb.btn) : null, nb.hint, tb.holder,
+    h('div', { class: 'low-actions' }, rb.open, h('a', { class: 'btn quiet', href: '#/come-funziona' }, icon('aiuto'), 'Come funziona')),
+    rb.holder);
+}
+const meta = (...parts) => parts.filter(Boolean).join(' · ');
 
 function tutorLine(session) {
   if (!session || (!session.url && !session.name)) return null;
@@ -222,7 +291,7 @@ async function pageOggi(main) {
       bar(wm, o.week.goalMinutes),
       h('div', { class: 'small muted' }, `Giorni di studio di fila: ${days}`)));
   }
-  if (!o.areas.length) { main.append(empty('programma', 'Nessun programma ancora', 'Il tutor lo crea alla prima sessione.'), tutorLine(o.session)); return; }
+  if (!o.areas.length) { main.append(empty('programma', 'Nessun programma ancora', 'Il tutor lo crea alla prima sessione.'), tutorLine(o.session), h('a', { class: 'more-link', href: '#/come-funziona' }, 'Come funziona Studio', icon('avanti'))); return; }
   if (o.gapsTotal) {
     main.append(h('section', { class: 'card review', 'aria-label': 'Da ripassare' },
       h('div', { class: 'head' }, icon('lacuna'), `Prima ripassa: ${plural(o.gapsTotal, 'lacuna aperta', 'lacune aperte')}`),
@@ -240,13 +309,16 @@ async function pageOggi(main) {
       h('h2', null, h('a', { href: areaHref(f.area) }, f.title)),
       h('div', { class: 'where' }, `Parte ${f.part.n}${f.part.title ? ` · ${f.part.title}` : ''} · settimana ${f.week}`),
       h('p', { class: 'step' }, n.text),
-      h('div', { class: 'chips' }, n.time ? chip(n.time, '', 'tempo') : null, n.resource && n.resource.title ? chip(n.resource.title, '', 'libro') : null),
-      h('div', { class: 'actions' }, n.resource ? extBtn('Apri la risorsa', n.resource.url) : null, h('a', { class: 'btn ghost', href: areaHref(f.area) }, 'Vedi il programma')),
-      tutorLine(o.session)));
+      n.time ? h('p', { class: 'where time' }, icon('tempo'), n.time) : null,
+      stepBody(f.area, f.title, { part: n.part, week: n.week, index: n.index }, n, o.session, () => route()),
+      h('a', { class: 'more-link', href: areaHref(f.area) }, 'Tutto il programma dell’area', icon('avanti'))));
   } else {
-    main.append(h('section', { class: 'card hero' }, h('div', { class: 'label' }, icon('fatto'), 'Programma completato'),
-      h('p', { class: 'muted' }, 'Tutti i passi sono fatti. Il tutor può aggiungere una parte nuova.'), tutorLine(o.session)));
+    const wait = o.areas.some((x) => x.pending);
+    main.append(h('section', { class: 'card hero' }, h('div', { class: 'label' }, icon('fatto'), wait ? 'Tutto fatto, da verificare' : 'Programma completato'),
+      h('p', { class: 'muted' }, wait ? 'Hai segnato tutti i passi: il tutor li verifica alla prossima sessione.' : 'Tutti i passi sono fatti. Il tutor può aggiungere una parte nuova.'), tutorLine(o.session)));
   }
+  const fr = firstRun();
+  if (fr) main.querySelector('h1').after(fr);
   const later = o.later.map((l) => by[l.area]).filter(Boolean);
   if (later.length) main.append(h('h2', null, 'Poi oggi'), areaRows(later, Object.fromEntries(o.later.map((l) => [l.area, `${l.time} · ${l.minutes} min`]))));
   const rest = o.areas.filter((a) => (!f || a.area !== f.area) && !later.includes(a));
@@ -275,61 +347,120 @@ function docsBlock(docs) {
     h('div', { class: 'small muted' }, d.kind === 'Note' ? 'Nota' : 'Scheda'),
     h('div', { class: 'doc-title' }, d.title),
     d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
-    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null)));
+    obsidianUrl(d.url) ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null)));
 }
 
+// Un passo nella lista: si apre sul posto con un tocco (freccia in giù). Il prossimo sta già in cima alla pagina con
+// le sue azioni: qui è una riga che riporta lì, così il titolo non si legge due volte aperto.
 function stepItem(a, p, w, s, i, isNext) {
+  const state = icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state');
+  const label = h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Adesso: ' : s.pending ? 'Da verificare: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text),
+    isNext ? h('span', { class: 'small tag' }, 'Adesso, in cima alla pagina') : s.pending && !s.done ? h('span', { class: 'small tag' }, `Da verificare con il tutor · ${s.pending} min`) : null);
+  if (isNext) {
+    const up = h('button', { class: 'step', type: 'button', 'data-act': 'adesso' }, state, label, icon('su', 'chev'));
+    up.addEventListener('click', () => { const top = document.getElementById('adesso'); if (top) { top.scrollIntoView({ block: 'start' }); top.focus({ preventScroll: true }); } });
+    return h('li', { class: 'next' }, up);
+  }
   const id = `passo-${p.n}-${w.n}-${i}`;
-  const rb = reportBox(a.area, { part: p.n, week: w.n, index: i });
-  const res = s.resource;
-  const pending = h('div', { class: 'chips', id: `${id}-verifica` });
-  const showPending = (min) => { pending.replaceChildren(chip(`Da verificare · ${min} min`, 'pri')); };
-  const fb = s.done ? null : doneBox(a.area, { part: p.n, week: w.n, index: i }, s.time, (min) => { showPending(min); fb.open.remove(); });
-  if (s.pending) showPending(s.pending);
-  const panel = h('div', { class: 'step-panel', id, hidden: isNext ? false : '' },
-    res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa')) : null,
-    s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
-    docsBlock(s.docs),
-    pending,
-    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, (s.links || []).map((l) => extBtn(l.title ? `Apri: ${l.title}` : 'Apri un’altra risorsa', l.url, 'ghost')), fb && !s.pending ? fb.open : null, rb.open), fb ? fb.holder : null, rb.holder);
-  const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
-    icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),
-    h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Prossimo: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text)),
-    icon('avanti', 'chev'));
+  const panel = h('div', { class: 'step-panel', id, hidden: '' },
+    s.time ? h('p', { class: 'where time' }, icon('tempo'), s.time) : null,
+    stepBody(a.area, a.title, { part: p.n, week: w.n, index: i }, s, a.session, () => route()));
+  const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': 'false', 'aria-controls': id }, state, label, icon('giu', 'chev'));
   btn.addEventListener('click', () => {
     const openNow = btn.getAttribute('aria-expanded') !== 'true';
     btn.setAttribute('aria-expanded', String(openNow)); panel.hidden = !openNow;
   });
-  return h('li', { class: s.done ? 'done' : isNext ? 'next' : '' }, btn, panel);
+  return h('li', { class: s.done ? 'done' : '' }, btn, panel);
 }
 
-// Area: settimane fatte chiuse, quella in corso aperta; le azioni stanno dentro il passo, che si apre con un tocco.
+// Area: in cima il prossimo passo con le sue azioni e quanto manca; sotto il programma nel suo ordine, con aperte
+// solo la parte e la settimana in corso. Le altre parti stanno in una riga e si aprono con un tocco.
 async function pageArea(main, name) {
   const a = await api(`/api/area/${encodeURIComponent(name)}`);
+  const nx = a.next;
   main.append(h('a', { class: 'back', href: '#/programma' }, icon('indietro'), 'Programma'), h('h1', null, a.title),
-    a.intro ? h('p', { class: 'muted' }, a.intro) : null, bar(a.done, a.total),
-    h('div', { class: 'chips' }, h('span', { class: 'count' }, `${a.done} di ${a.total} passi fatti`), a.gaps ? chip(plural(a.gaps, 'lacuna aperta', 'lacune aperte'), 'gap') : null));
+    a.intro ? h('p', { class: 'lead' }, a.intro) : null);
+  if (nx) {
+    const s = a.parts.find((p) => p.n === nx.part).weeks.find((w) => w.n === nx.week).steps[nx.index];
+    const pt = a.parts.find((p) => p.n === nx.part);
+    main.append(h('section', { class: 'card hero', id: 'adesso', tabindex: '-1', 'aria-label': 'Il prossimo passo' },
+      h('div', { class: 'label' }, icon('prossimo'), 'Il prossimo passo'),
+      h('p', { class: 'step' }, s.text),
+      h('p', { class: 'where' }, meta(`Parte ${nx.part}${pt.title ? `: ${pt.title}` : ''}`, `settimana ${nx.week}`, s.time)),
+      stepBody(a.area, a.title, { part: nx.part, week: nx.week, index: nx.index }, s, a.session, () => route())));
+  } else if (a.total) {
+    main.append(h('section', { class: 'card hero', id: 'adesso' }, h('div', { class: 'label' }, icon('fatto'), a.pending ? 'Tutto fatto, da verificare' : 'Area completata'),
+      h('p', { class: 'muted' }, a.pending ? 'Hai segnato tutti i passi: il tutor li verifica alla prossima sessione.' : 'Tutti i passi sono fatti. Il tutor può aggiungere una parte nuova.')));
+  }
+  main.append(h('div', { class: 'progress' },
+    h('div', { class: 'small' }, h('strong', null, `${a.done} di ${a.total} passi fatti`), a.done < a.total && a.minutesLeft ? ` · restano circa ${hours(a.minutesLeft)}` : ''),
+    bar(a.done, a.total),
+    a.gaps ? h('div', { class: 'chips' }, chip(plural(a.gaps, 'lacuna aperta', 'lacune aperte'), 'gap')) : null));
+  if (a.introMore && a.introMore.length) {
+    main.append(h('details', { class: 'fold' }, h('summary', null, h('span', { class: 'grow' }, 'Metodo e ritmo'), icon('giu', 'chev')),
+      h('div', { class: 'body' }, a.introMore.map((l) => h('p', { class: 'small' }, l)))));
+  }
+  main.append(h('h2', null, 'Il programma'));
   for (const p of a.parts) {
-    main.append(h('div', { class: 'part-head' }, h('div', { class: 'n' }, `Parte ${p.n}`), h('h2', null, p.title || `Parte ${p.n}`)),
-      p.objective || p.verification || p.notes.length ? h('div', { class: 'goal' },
-        p.objective ? h('p', null, h('strong', null, 'Obiettivo: '), p.objective) : null,
-        p.verification ? h('p', null, h('strong', null, 'Verifica finale: '), p.verification) : null,
-        p.notes.map((n) => h('p', { class: 'muted' }, n))) : null);
-    for (const w of p.weeks) {
+    const steps = p.weeks.flatMap((w) => w.steps);
+    const pdone = steps.filter((s) => s.done).length;
+    const pall = steps.length > 0 && pdone === steps.length;
+    const pcur = !!nx && nx.part === p.n;
+    const weeks = p.weeks.map((w) => {
       const done = w.steps.filter((s) => s.done).length;
       const all = w.steps.length > 0 && done === w.steps.length;
-      const current = !!a.next && a.next.part === p.n && a.next.week === w.n;
-      main.append(h('details', { class: `week${all ? ' done' : ''}`, open: current ? '' : false },
+      const current = pcur && nx.week === w.n;
+      return h('details', { class: `week${all ? ' done' : ''}`, open: current ? '' : false },
         h('summary', null, icon(all ? 'fatto' : current ? 'prossimo' : 'dafare', 'state'),
-          h('span', { class: 'grow' }, `Settimana ${w.n}${w.title ? `: ${w.title}` : ''}`), h('span', { class: 'count' }, `${done}/${w.steps.length}`), icon('avanti', 'chev')),
+          h('span', { class: 'grow' }, `Settimana ${w.n}${w.title ? `: ${w.title}` : ''}`), h('span', { class: 'count' }, `${done}/${w.steps.length}`), icon('giu', 'chev')),
         h('div', { class: 'body' }, w.notes.map((n) => h('p', { class: 'muted small' }, n)),
-          h('ul', { class: 'steps' }, w.steps.map((s, i) => stepItem(a, p, w, s, i, current && a.next.index === i))))));
-    }
+          h('ul', { class: 'steps' }, w.steps.map((s, i) => stepItem(a, p, w, s, i, current && nx.index === i)))));
+    });
+    main.append(h('details', { class: `part${pall ? ' done' : ''}${pcur ? ' current' : ''}`, open: pcur ? '' : false },
+      h('summary', null, icon(pall ? 'fatto' : pcur ? 'prossimo' : 'dafare', 'state'),
+        h('span', { class: 'grow' }, h('span', { class: 'n' }, `Parte ${p.n}${pcur ? ' · in corso' : ''}`), h('span', { class: 'ptitle' }, p.title || `Parte ${p.n}`)),
+        h('span', { class: 'count' }, `${pdone}/${steps.length}`), icon('giu', 'chev')),
+      h('div', { class: 'body' },
+        p.objective || p.verification || p.notes.length ? h('div', { class: 'goal' },
+          p.objective ? h('p', null, h('strong', null, 'Obiettivo della parte: '), p.objective) : null,
+          p.verification ? h('p', null, h('strong', null, 'Verifica finale, con il tutor a fine parte: '), p.verification) : null,
+          p.notes.map((n) => h('p', { class: 'muted' }, n))) : null,
+        weeks)));
   }
-  if (a.resources && a.resources.length) main.append(h('h2', null, 'Risorse dell’area'), h('section', { class: 'card prose' }, listOf(a.resources)));
+  if (a.resources && a.resources.length) {
+    main.append(h('details', { class: 'fold' }, h('summary', null, h('span', { class: 'grow' }, 'Risorse dell’area'), icon('giu', 'chev')), h('div', { class: 'body prose' }, listOf(a.resources))));
+  }
   const rb = reportBox(a.area);
-  main.append(h('h2', null, 'Qualcosa non va in quest’area?'), h('section', { class: 'card', id: 'segnala-area' },
-    h('p', { class: 'muted small' }, 'Scrivilo qui: il tutor lo legge alla prossima sessione e sistema il programma.'), rb.open, rb.holder));
+  main.append(h('div', { class: 'low-actions', id: 'segnala-area' }, rb.open), rb.holder);
+}
+
+// La prima volta: un invito a leggere come funziona; si toglie con un tocco e non torna.
+function firstRun() {
+  try { if (localStorage.getItem('come-funziona-visto')) return null; } catch { return null; }
+  const seen = () => { try { localStorage.setItem('come-funziona-visto', '1'); } catch { /* resta finché non si legge */ } };
+  const card = h('section', { class: 'card intro-card', id: 'prima-volta' }, h('strong', null, 'Prima volta qui?'), h('p', { class: 'small muted' }, 'Un minuto per capire app, tutor e note.'),
+    h('div', { class: 'actions' }, h('a', { class: 'btn ghost', href: '#/come-funziona' }, 'Come funziona'),
+      h('button', { class: 'btn quiet', type: 'button', onclick: () => { seen(); card.remove(); } }, 'Ho capito')));
+  return card;
+}
+
+// Come funziona: poche righe, ognuna con il pulsante che porta dove serve.
+async function pageComeFunziona(main) {
+  try { localStorage.setItem('come-funziona-visto', '1'); } catch { /* non importa */ }
+  let session = null;
+  try { session = (await api('/api/feedback')).session; } catch (e) { if (e.message === 'login') throw e; }
+  const sec = (ic, title, text, action) => h('section', { class: 'how' }, h('h2', null, icon(ic), title), h('p', null, text), action || null);
+  const go = (href, label) => h('a', { class: 'btn ghost', href }, label, icon('avanti'));
+  const t = tutorLine(session);
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Come funziona'),
+    h('p', { class: 'lead' }, 'Studio ti dice cosa fare adesso. Il tutor scrive il programma, l’app lo mostra, i tuoi appunti stanno in Obsidian.'),
+    sec('oggi', 'Ogni giorno', '«Oggi» sceglie un’area (quella in calendario, altrimenti quella ferma da più tempo) e ne mostra il prossimo passo. Apri la risorsa, studia, poi tocca «Fatto» e conferma i minuti.', go('#/oggi', 'Apri Oggi')),
+    sec('fatto', 'Dopo «Fatto»', 'Il passo resta «da verificare»: alla sessione successiva il tutor ti fa qualche domanda e lo chiude. Intanto l’app ti propone il passo dopo.'),
+    sec('tutor', 'Il tutor', 'È l’assistente che scrive e corregge il programma, in una sessione a parte. «Chiedi al tutor» copia il passo e apre la sessione: incolla e scrivi la domanda.', t),
+    sec('nota', 'Le note', '«Nuova nota», dentro un passo, apre Obsidian con la nota già pronta: una per passo, nella cartella Studio/Note. Il tutor le legge ma non le cambia.'),
+    sec('ripasso', 'Ripasso', 'Quello che in una verifica non sai ancora diventa una lacuna, cioè una cosa da rivedere. Resta in «Ripasso» finché la ripassi e tocchi «Ripassata».', go('#/ripasso', 'Apri il ripasso')),
+    sec('segnala', 'Quando qualcosa non va', '«Segnala un problema» è per un passo poco chiaro o una risorsa sbagliata: il tutor lo legge alla prossima sessione e sistema il programma. Per una domanda subito c’è «Chiedi al tutor».'),
+    sec('programma', 'Programma e Andamento', '«Programma» è tutto il percorso, area per area. «Andamento» mostra le ore, le sessioni e le verifiche.', go('#/programma', 'Apri il programma')));
 }
 
 function blocks(list) {
@@ -371,7 +502,7 @@ async function pageRipasso(main) {
   setBadge(gaps.length);
   main.append(h('h1', null, 'Da ripassare'));
   if (!gaps.length && !waiting.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
-  main.append(h('p', { class: 'muted' }, 'Le lacune rimaste aperte dopo le verifiche, la più vecchia in alto. Quando le hai ripassate toccane «Ripassata»: il tutor le chiude alla prossima sessione.'));
+  main.append(h('p', { class: 'muted' }, 'Cose da rivedere emerse nelle verifiche. Ripassata una, tocca «Ripassata».'));
   const wait = h('div', { class: 'waiting' });
   const open = h('div', { class: 'open' });
   const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
@@ -540,7 +671,7 @@ async function pageCerca(main, q) {
   const row = (href, title, sub) => h('a', { class: 'row', href }, h('span', { class: 'grow' }, h('span', { class: 'title' }, title), sub ? h('span', { class: 'small muted sub' }, sub) : null), icon('avanti', 'chev'));
   const docRow = (d) => h('div', { class: 'doc' }, h('div', { class: 'doc-title' }, d.title),
     d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
-    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null);
+    obsidianUrl(d.url) ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null);
   let tick = 0, timer = null;
   async function run() {
     const my = ++tick;
@@ -584,6 +715,7 @@ async function pageAltro(main) {
   const item = (href, ic, title, sub) => h('a', { class: 'row', href }, icon(ic), h('span', { class: 'grow' }, h('span', { class: 'title' }, title), h('span', { class: 'small muted sub' }, sub)), icon('avanti', 'chev'));
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
+    item('#/come-funziona', 'aiuto', 'Come funziona', 'App, tutor, note e ripasso in un minuto'),
     item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note e schede'),
     item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
     item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
@@ -613,7 +745,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro', cerca: 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro', cerca: 'altro', 'come-funziona': 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -655,12 +787,13 @@ async function route() {
     else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);
     else if (known === 'feedback') await pageFeedback(main);
+    else if (known === 'come-funziona') await pageComeFunziona(main);
     else if (known === 'altro') await pageAltro(main);
     else await pageOggi(main);
   } catch (e) {
     clearTimeout(slow);
     if (e.message === 'login') return;
-    main.replaceChildren(h('p', { class: 'error', role: 'alert' }, e.message), h('a', { class: 'btn ghost', href: '#/oggi' }, 'Torna a Oggi'));
+    main.replaceChildren(h('p', { class: 'error', role: 'alert' }, e.message), h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', onclick: () => route() }, 'Riprova'), h('a', { class: 'btn ghost', href: '#/oggi' }, 'Torna a Oggi')));
   }
   clearTimeout(slow);
   if (my !== seq) return;

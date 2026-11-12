@@ -31,9 +31,10 @@ function makeFixture() {
   fs.mkdirSync(path.join(dir, 'programma'));
   fs.mkdirSync(path.join(dir, 'risorse'));
   fs.writeFileSync(path.join(dir, 'programma', 'algoritmi.md'), ALGO);
-  fs.writeFileSync(path.join(dir, 'programma', 'sistemi.md'), '# Sistemi\nfile senza parti né passi <i>x</i>\n');
+  fs.writeFileSync(path.join(dir, 'programma', 'sistemi.md'), '# Sistemi\nCapire le reti <i>x</i>\n\nMetodo: un capitolo alla volta.\nRitmo: due sessioni a settimana.\n## Parte 1: Rete\n### Settimana 1\n- [x] Rete\n');
   fs.writeFileSync(path.join(dir, 'programma', 'strana.md'), '\u0000\u0001 ### Settimana\n- [ ]\n');
   fs.writeFileSync(path.join(dir, 'programma', 'non valida.md'), 'x');
+  fs.writeFileSync(path.join(dir, 'programma', 'settimana.md'), '# Settimana tipo\n**Regole** del tutor, nessuna parte.\n- lunedì: algoritmi\n');
   fs.writeFileSync(path.join(dir, 'risorse', 'algoritmi.md'), '# Fonti\n- [Awesome](https://example.com/a) perché sì\n- [Brutto](javascript:alert(1)) no\n');
   fs.writeFileSync(path.join(dir, 'progressi.md'), PROG);
   fs.writeFileSync(path.join(dir, 'verifiche.md'), module.exports.VERIFICHE);
