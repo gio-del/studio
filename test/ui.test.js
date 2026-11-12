@@ -170,7 +170,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(fs.existsSync(path.join(dir, 'Note')), false, 'l\'app non scrive in Note/');
   // Tutor: stesso pulsante, verso la sessione
   assert.strictEqual(await ev('document.querySelector("#adesso [data-act=tutor]").href'), 'https://example.com/sessione');
-  assert.strictEqual(await ev('!!document.querySelector("#adesso a[href=\"#/come-funziona\"]")'), true, 'dal passo si arriva a «Come funziona»');
+  assert.strictEqual(await ev('!!document.querySelector("#adesso a[href=\\"#/come-funziona\\"]")'), true, 'dal passo si arriva a «Come funziona»');
 
   // Segnala: tocchi ripetuti aprono e chiudono, un solo modulo
   const toggle = 'document.querySelector("#adesso [data-act=segnala]")';
@@ -253,11 +253,11 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await current(), 'Altro');
   assert.strictEqual(await ev('document.querySelectorAll("section.how").length'), 7);
   assert.strictEqual(await ev('[...document.querySelectorAll("section.how p")].every((p) => p.textContent.length <= 240)'), true, 'sezioni corte');
-  assert.strictEqual(await ev('!!document.querySelector("section.how a[href=\"#/oggi\"]") && !!document.querySelector("section.how a[href=\"#/ripasso\"]") && !!document.querySelector("section.how #sessione a")'), true);
+  assert.strictEqual(await ev('!!document.querySelector("section.how a[href=\\"#/oggi\\"]") && !!document.querySelector("section.how a[href=\\"#/ripasso\\"]") && !!document.querySelector("section.how #sessione a")'), true);
   await noOverflow('come funziona'); await targets('come funziona');
   await go('#/altro');
-  await waitFor('!!document.querySelector("main a.row[href=\"#/come-funziona\"]")', 'voce Come funziona in Altro');
-  await ev('(() => { const a = document.querySelector("main a.row[href=\"#/come-funziona\"]"); a.click(); a.click(); a.click(); return true; })()');
+  await waitFor('!!document.querySelector("main a.row[href=\\"#/come-funziona\\"]")', 'voce Come funziona in Altro');
+  await ev('(() => { const a = document.querySelector("main a.row[href=\\"#/come-funziona\\"]"); a.click(); a.click(); a.click(); return true; })()');
   await waitFor('document.querySelectorAll("section.how").length === 7 && document.querySelectorAll("main h1").length === 1', 'come funziona dopo i tocchi');
 
   // Telefono stretto e largo, tema scuro: niente scroll orizzontale, etichette del menu che non si toccano
