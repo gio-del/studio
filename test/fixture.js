@@ -18,7 +18,7 @@ una nota <b>strana</b>
 
 ### Settimana 2
 - [ ] Hash map (risorsa: Solo titolo, 1 h)
-- [ ] Senza risorsa
+- [ ] Verifica **grande** a tempo (risorsa: [LeetCode 128](https://leetcode.com/problems/longest-consecutive-sequence/), 30 min). Valid Sudoku ([LeetCode 36](https://leetcode.com/problems/valid-sudoku/)) va nel ripasso, con \`dict\` e [x](javascript:alert(1)).
 
 ## Parte 2: Alberi
 Obiettivo: attraversare alberi

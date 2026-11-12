@@ -149,3 +149,17 @@ test('stepMinutes: formati del tempo stimato, mai errori', () => {
   const prog = P.parseProgram('## Parte 1: A\n### Settimana 1\n- [ ] a (risorsa: [R](https://e.com), 1h30)\n- [ ] b\n');
   assert.deepStrictEqual(P.allSteps(prog).map((x) => P.stepMinutes(x.step.time)), [90, null]);
 });
+
+test('parser: testo pulito da link e simboli Markdown, risorse in più solo http(s)', () => {
+  const raw = '- [ ] Verifica **grande** a tempo (risorsa: [LeetCode 128](https://leetcode.com/problems/longest-consecutive-sequence/), 30 min). Valid Sudoku ([LeetCode 36](https://leetcode.com/problems/valid-sudoku/)) va nel ripasso, con `dict` e [x](javascript:alert(1)).';
+  const s = P.parseStep(raw);
+  assert.strictEqual(s.text, 'Verifica grande a tempo. Valid Sudoku (LeetCode 36) va nel ripasso, con dict e x.');
+  assert.doesNotMatch(s.text, /\[|\]\(|http|\*\*|`/);
+  assert.deepStrictEqual([s.resource, s.time], [{ title: 'LeetCode 128', url: 'https://leetcode.com/problems/longest-consecutive-sequence/' }, '30 min']);
+  assert.deepStrictEqual(s.links, [{ title: 'LeetCode 36', url: 'https://leetcode.com/problems/valid-sudoku/' }]);
+  const o = P.parseProgram('## Parte 1: a\nObiettivo: leggere **bene** [doc](https://e.com/d)\nnota [a](https://e.com)\n### Settimana 1: s\nnota *forte* `x`\n- [ ] <img src=x onerror=alert(1)> [h](data:text/html,x)\n').parts[0];
+  assert.strictEqual(o.objective, 'leggere bene doc');
+  assert.deepStrictEqual([o.notes[0], o.weeks[0].notes[0]], ['nota a', 'nota forte x']);
+  assert.strictEqual(o.weeks[0].steps[0].text, '<img src=x onerror=alert(1)> h', 'resta testo, nessun HTML');
+  assert.deepStrictEqual(o.weeks[0].steps[0].links, []);
+});

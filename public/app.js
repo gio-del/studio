@@ -283,7 +283,7 @@ function stepItem(a, p, w, s, i, isNext) {
     s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
     docsBlock(s.docs),
     pending,
-    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, fb && !s.pending ? fb.open : null, rb.open), fb ? fb.holder : null, rb.holder);
+    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, (s.links || []).map((l) => extBtn(l.title ? `Apri: ${l.title}` : 'Apri un’altra risorsa', l.url, 'ghost')), fb && !s.pending ? fb.open : null, rb.open), fb ? fb.holder : null, rb.holder);
   const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
     icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),
     h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Prossimo: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text)),
