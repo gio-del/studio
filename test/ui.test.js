@@ -31,7 +31,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const dir = makeFixture();
   fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
-  const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor' }) });
+  const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor', HS_OBSIDIAN_VAULT: 'Il mio vault' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const base = `http://127.0.0.1:${server.address().port}`;
   const dport = 20000 + Math.floor(Math.random() * 20000);
@@ -68,7 +68,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("section.hero")', 'pagina Oggi');
   const text = () => ev('document.querySelector("main").innerText');
   const current = () => ev('document.querySelector("#nav a[aria-current=page] .lbl").textContent');
-  const targets = async (what) => assert.strictEqual(await ev('[...document.querySelectorAll("button, a.btn, #nav a, summary, a.row, a.back, .seg a, a.gaplink")].filter((b) => b.offsetParent !== null && b.getBoundingClientRect().height < 43.5).length'), 0, `bersagli >= 44px: ${what}`);
+  const targets = async (what) => assert.strictEqual(await ev('[...document.querySelectorAll("button, a.btn, #nav a, summary, a.row, a.back, .seg a, a.gaplink, a.more-link")].filter((b) => b.offsetParent !== null && b.getBoundingClientRect().height < 43.5).length'), 0, `bersagli >= 44px: ${what}`);
 
   // Menu: cinque voci con icona ed etichetta su una riga sola, in basso
   assert.strictEqual(await ev('document.querySelectorAll("#nav a").length'), 5);
@@ -86,9 +86,20 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("section.hero").length'), 1);
   assert.strictEqual(await ev('document.querySelector("section.hero a.btn[target=_blank]").href'), 'https://example.com/libro');
   assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '2');
-  assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
-  assert.strictEqual(await ev('document.querySelector("#sessione a").rel'), 'noopener noreferrer');
-  assert.strictEqual(await ev('document.querySelector("#sessione a").getBoundingClientRect().height >= 43.5'), true);
+  // il passo di oggi ha le sue azioni qui: risorsa, Fatto, nota, tutor, senza passare dal programma
+  const tutor = 'document.querySelector("section.hero [data-act=tutor]")';
+  assert.strictEqual(await ev(tutor + '.href'), 'https://example.com/sessione');
+  assert.strictEqual(await ev(tutor + '.rel'), 'noopener noreferrer');
+  assert.strictEqual(await ev('!!document.querySelector("section.hero [data-act=fatto]") && !!document.querySelector("section.hero [data-act=nota]") && !!document.querySelector("section.hero [data-act=segnala]")'), true);
+  assert.strictEqual(await ev('document.querySelectorAll("section.hero .main-actions .btn").length'), 2, 'risorsa e Fatto, uno sotto l\'altro');
+  assert.strictEqual(await ev('(() => { const [a, b] = document.querySelectorAll("section.hero .main-actions .btn"); return b.getBoundingClientRect().top >= a.getBoundingClientRect().bottom + 8; })()'), true, 'Fatto non è attaccato ad «Apri la risorsa»');
+  // prima volta: l'invito a «Come funziona» c'è, si toglie con un tocco (anche ripetuto) e non torna
+  assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 1);
+  await ev('(() => { const b = document.querySelector("#prima-volta button"); b.click(); b.click(); b.click(); return true; })()');
+  assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 0);
+  await ev('route().then(() => true)');
+  await waitFor('!!document.querySelector("section.hero")', 'Oggi di nuovo');
+  assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 0, 'l\'invito non torna');
   assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 hGiorni di studio di fila: \d+/);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);
@@ -96,41 +107,73 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
 
   // Programma: tutte le aree
   await go('#/programma');
-  await waitFor('document.querySelectorAll("a.card.area").length === 3', 'programma');
+  await waitFor('document.querySelectorAll("a.card.area").length === 2', 'programma');
   assert.match(await text(), /1\/5/);
+  assert.doesNotMatch(await text(), /Settimana tipo|Strana/, 'un file senza parti e passi non è un\'area');
   assert.strictEqual(await current(), 'Programma');
   await noOverflow('programma');
 
-  // Area: parti, obiettivo, verifica finale, link, XSS; settimana in corso aperta, le altre chiuse
+  // Area: in cima il prossimo passo con le sue azioni e quanto manca; sotto il programma, aperte solo parte e settimana in corso
   await go('#/area/algoritmi');
   await waitFor('!!document.querySelector("ul.steps")', 'pagina area');
   const area = await text();
   assert.match(area, /Basi/);
-  assert.match(area, /Obiettivo: leggere la complessità/);
-  assert.match(area, /Verifica finale: analizzare/);
+  assert.match(area, /Obiettivo della parte: leggere la complessità/);
+  assert.match(area, /Verifica finale, con il tutor a fine parte: analizzare/);
   assert.match(area, /<script>alert\(1\)<\/script>/, 'il testo ostile è visibile come testo');
   assert.match(area, /<b>strana<\/b>/);
   assert.strictEqual(await ev('document.querySelectorAll("main script, main b").length'), 0);
+  assert.strictEqual(await ev('document.querySelector("#adesso .step").textContent'), 'Array e stringhe');
+  assert.strictEqual(await ev('document.querySelector("#adesso .where").textContent'), 'Parte 1: Basi · settimana 1 · 3 h');
+  assert.strictEqual(await ev('document.querySelector("#adesso .main-actions a.btn").href'), 'https://example.com/libro', 'la risorsa si apre dalla cima, senza cercare il passo');
+  assert.match(await ev('document.querySelector(".progress").textContent'), /^1 di 5 passi fatti · restano circa \d+ h/);
+  assert.strictEqual(await ev('document.querySelector(".lead").textContent'), 'Imparare gli algoritmi per i colloqui. Livello: base.');
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part")].map((d) => d.open)'), [true, false], 'solo la parte in corso è aperta');
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part > summary .count")].map((e) => e.textContent)'), ['1/5', '0/0'], 'contatori tutti nella stessa forma');
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.week")].map((d) => d.open)'), [true, false], 'solo la settimana in corso è aperta');
+  assert.strictEqual(await ev('document.querySelectorAll(".step-panel:not([hidden])").length'), 0, 'nella lista nessun passo aperto: il prossimo è in cima');
+  assert.strictEqual(await ev('document.querySelectorAll("li.next .step-panel").length'), 0);
   // Passi con Markdown: nessun simbolo né indirizzo nel testo, link in più come pulsanti http(s)
   assert.match(await ev('document.querySelector("main").textContent'), /Verifica grande a tempo\. Valid Sudoku \(LeetCode 36\) va nel ripasso, con dict e x\./);
   assert.strictEqual(await ev('[...document.querySelectorAll(".step-text")].filter((e) => /\\]\\(|https?:|\\*\\*|`/.test(e.textContent)).length'), 0, 'nessun simbolo Markdown nei passi');
   assert.strictEqual(await ev('[...document.querySelectorAll(".step-panel a.btn")].filter((a) => a.textContent.includes("LeetCode 36") && a.href === "https://leetcode.com/problems/valid-sudoku/").length'), 1, 'risorsa in più nel pannello');
-  assert.strictEqual(await ev('[...document.querySelectorAll("a[href]")].filter((a) => !/^(https?:\\/\\/|#|\\/)/.test(a.getAttribute("href"))).length'), 0);
+  assert.strictEqual(await ev('[...document.querySelectorAll("a[href]")].filter((a) => !/^(https?:\\/\\/|#|\\/|obsidian:\\/\\/(open|new)\\?)/.test(a.getAttribute("href"))).length'), 0);
   assert.strictEqual(await ev('[...document.querySelectorAll("main a[href^=http]")].every((a) => a.rel === "noopener noreferrer")'), true);
-  assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.week")].map((d) => d.open)'), [true, false], 'solo la settimana in corso è aperta');
-  assert.strictEqual(await ev('document.querySelectorAll(".step-panel:not([hidden])").length'), 1, 'aperto solo il prossimo passo');
   assert.strictEqual(await current(), 'Programma');
   await noOverflow('area'); await targets('area');
+  // la freccia a destra è solo per cambiare pagina: ciò che si apre sul posto ha la freccia in giù
+  assert.strictEqual(await ev('[...document.querySelectorAll("summary .chev, button.step[aria-expanded] .chev")].every((s) => s.querySelector("path").getAttribute("d") === "M6 9l6 6 6-6")'), true);
+
+  // Il prossimo passo nella lista riporta in cima: tocchi ripetuti, nessun pannello doppio
+  await ev('(() => { const b = document.querySelector("li.next button[data-act=adesso]"); b.click(); b.click(); b.click(); return true; })()');
+  assert.strictEqual(await ev('document.activeElement.id'), 'adesso');
+  assert.strictEqual(await ev('document.querySelectorAll("#adesso").length'), 1);
 
   // Un passo si apre e si chiude con un tocco; tocchi ripetuti non lasciano stati a metà
   const row = 'document.querySelectorAll("ul.steps li button.step")[2]';
   await ev(row + '.click()'); await ev(row + '.click()'); await ev(row + '.click()');
   assert.strictEqual(await ev(row + '.getAttribute("aria-expanded")'), 'true');
   assert.strictEqual(await ev(row + '.parentElement.querySelector(".step-panel").hidden'), false);
-  assert.strictEqual(await ev('[...document.querySelectorAll(".step-panel:not([hidden]) a[href]")].every((a) => /^https?:/.test(a.href))'), true, 'nessun link javascript: nel passo ostile');
+  assert.strictEqual(await ev('[...document.querySelectorAll(".step-panel:not([hidden]) a[href]")].every((a) => /^(https?:|obsidian:)/.test(a.href) || a.getAttribute("href").startsWith("#/"))'), true, 'nessun link javascript: nel passo ostile');
+  assert.match(await ev(row + '.parentElement.querySelector(".res").textContent'), /Cattivo \(senza link\)/, 'risorsa senza indirizzo: nessun pulsante che non apre niente');
+  assert.strictEqual(await ev(row + '.parentElement.querySelectorAll(".main-actions a").length'), 0);
+  await noOverflow('passo aperto'); await targets('passo aperto');
+  await ev(row + '.click()');
+
+  // Nota del passo: «Nuova nota» apre Obsidian con la nota pronta; dopo il tocco (o quando il file c'è) diventa «Apri la nota»
+  const nota = 'document.querySelector("#adesso [data-act=nota]")';
+  assert.strictEqual(await ev(nota + '.textContent'), 'Nuova nota');
+  assert.match(await ev(nota + '.getAttribute("href")'), /^obsidian:\/\/new\?vault=Il%20mio%20vault&file=Studio%2FNote%2Falgoritmi%2FArray%20e%20stringhe&content=%23%20Array%20e%20stringhe%0A%0A%23%23%20Cosa%20ho%20capito/);
+  await ev('(() => { const a = ' + nota + '; a.addEventListener("click", (e) => e.preventDefault()); a.click(); a.click(); a.click(); return true; })()');
+  await waitFor(nota + '.textContent === "Apri la nota"', 'la nota appena creata si riapre, non si ricrea');
+  assert.match(await ev(nota + '.getAttribute("href")'), /^obsidian:\/\/open\?vault=Il%20mio%20vault&file=Studio%2FNote%2Falgoritmi%2FArray%20e%20stringhe$/);
+  assert.strictEqual(fs.existsSync(path.join(dir, 'Note')), false, 'l\'app non scrive in Note/');
+  // Tutor: stesso pulsante, verso la sessione
+  assert.strictEqual(await ev('document.querySelector("#adesso [data-act=tutor]").href'), 'https://example.com/sessione');
+  assert.strictEqual(await ev('!!document.querySelector("#adesso a[href=\"#/come-funziona\"]")'), true, 'dal passo si arriva a «Come funziona»');
 
   // Segnala: tocchi ripetuti aprono e chiudono, un solo modulo
-  const toggle = 'document.querySelector("li.next .step-panel button.ghost")';
+  const toggle = 'document.querySelector("#adesso [data-act=segnala]")';
   await ev(toggle + '.click()'); await ev(toggle + '.click()'); await ev(toggle + '.click()');
   assert.strictEqual(await ev('document.querySelectorAll("form.report").length'), 1);
   await noOverflow('modulo segnala'); await targets('modulo segnala');
@@ -149,7 +192,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
 
   // Fatto con i minuti: valore proposto dal tempo del passo, minuti non validi rifiutati, un invio solo con tocchi ripetuti
   await ev(toggle + '.click()'); // chiude il modulo Segnala rimasto aperto
-  const doneBtn = 'document.querySelector("li.next .step-panel .actions button:not(.ghost)")';
+  const doneBtn = 'document.querySelector("#adesso [data-act=fatto]")';
   await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()');
   assert.strictEqual(await ev('document.querySelectorAll("form.done-form").length'), 1, 'tocchi ripetuti, un solo modulo');
   assert.strictEqual(await ev('document.querySelector("form.done-form input").value'), '180', '3 h proposte come 180 minuti');
@@ -162,16 +205,79 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1, 'minuti non validi: nessuna riga');
   await ev('document.querySelector("form.done-form input").value = "45"');
   await ev('(() => { const b = document.querySelector("form.done-form button[type=submit]"); b.click(); b.click(); b.click(); })()');
-  await waitFor('document.querySelectorAll("form.done-form").length === 0', 'modulo chiuso dopo l\'invio');
-  await waitFor('/Da verificare · 45 min/.test(document.querySelector("li.next .step-panel").textContent)', 'passo da verificare');
+  // dopo «Fatto» la cima passa al passo dopo; quello segnato resta nella lista «da verificare», senza un secondo «Fatto»
+  await waitFor('document.querySelector("#adesso .step") && /^Passo <script>/.test(document.querySelector("#adesso .step").textContent)', 'la cima mostra il passo dopo');
   const rows = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
   assert.strictEqual(rows.length, 2, 'tre tocchi su Invia, una riga in più');
   assert.match(rows[1], /\| algoritmi \| fatto \| \[passo: Parte 1, Settimana 1, Array e stringhe\] 45 min$/);
-  assert.strictEqual(await ev('!!document.querySelector("li.next .step-panel .actions button:not(.ghost)")'), false, 'niente secondo «Fatto» sul passo');
-  // ricaricata la pagina il passo resta «da verificare» e non offre di nuovo «Fatto»
-  await go('#/area/algoritmi');
+  const fatto = 'document.querySelectorAll("ul.steps li")[1]';
+  assert.match(await ev(fatto + '.textContent'), /Array e stringhe.*Da verificare con il tutor · 45 min/);
+  assert.strictEqual(await ev('!!' + fatto + '.querySelector("[data-act=fatto]")'), false, 'niente secondo «Fatto» sul passo');
+  assert.strictEqual(await ev('document.querySelectorAll("main script").length'), 0);
+  assert.strictEqual(await ev('document.querySelectorAll("#adesso [data-act=fatto]").length'), 1);
+  // ricaricata la pagina resta così
+  await ev('route().then(() => true)');
   await waitFor('!!document.querySelector("ul.steps")', 'area ricaricata');
-  assert.match(await ev('document.querySelector("li.next .step-panel").textContent'), /Da verificare · 45 min/);
+  assert.match(await ev(fatto + '.textContent'), /Da verificare con il tutor · 45 min/);
+  await noOverflow('area dopo Fatto'); await targets('area dopo Fatto');
+
+  // Quando il file della nota c'è (arrivato da Obsidian), il pulsante la apre
+  fs.mkdirSync(path.join(dir, 'Note', 'algoritmi'), { recursive: true });
+  const name = await ev('decodeURIComponent(/file=([^&]*)/.exec(document.querySelector("#adesso [data-act=nota]").getAttribute("href"))[1])');
+  assert.doesNotMatch(name.slice('Studio/Note/algoritmi/'.length), /[\\/:*?"<>|#^[\]]/, 'nome del file ripulito');
+  fs.writeFileSync(path.join(dir, name.replace(/^Studio\//, '') + '.md'), '# mia\n');
+  await ev('route().then(() => true)');
+  await waitFor('document.querySelector("#adesso [data-act=nota]") && document.querySelector("#adesso [data-act=nota]").textContent === "Apri la nota"', 'nota esistente');
+  fs.rmSync(path.join(dir, 'Note'), { recursive: true, force: true });
+
+  // Area completata, con il resto dell'introduzione dietro un tocco (anche ripetuto) e solo come testo
+  await go('#/area/sistemi');
+  await waitFor('!!document.querySelector("details.fold")', 'area sistemi');
+  assert.match(await text(), /Area completata/);
+  assert.strictEqual(await ev('document.querySelector(".lead").textContent'), 'Capire le reti <i>x</i>');
+  assert.strictEqual(await ev('document.querySelector("details.fold").open'), false, 'metodo e ritmo chiusi');
+  await ev('(() => { const s = document.querySelector("details.fold > summary"); s.click(); s.click(); s.click(); return true; })()');
+  assert.strictEqual(await ev('document.querySelector("details.fold").open'), true);
+  assert.match(await ev('document.querySelector("details.fold .body").innerText'), /Metodo: un capitolo alla volta\.\s+Ritmo: due sessioni a settimana\./);
+  assert.strictEqual(await ev('document.querySelectorAll("main i, main script").length'), 0);
+  assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part")].map((d) => d.open)'), [false], 'parte fatta: una riga');
+  await noOverflow('area completata'); await targets('area completata');
+  // un file di regole non è un'area: la pagina lo dice e offre «Riprova»
+  await go('#/area/settimana');
+  await waitFor('!!document.querySelector("main .error")', 'area sconosciuta');
+  assert.match(await text(), /Area sconosciuta[\s\S]*Riprova/);
+
+  // Come funziona: sotto «Altro» (menu acceso su «Altro»), poche righe con il pulsante che porta dove serve
+  await go('#/come-funziona');
+  await waitFor('document.querySelector("main h1") && document.querySelector("main h1").textContent === "Come funziona"', 'come funziona');
+  assert.strictEqual(await current(), 'Altro');
+  assert.strictEqual(await ev('document.querySelectorAll("section.how").length'), 7);
+  assert.strictEqual(await ev('[...document.querySelectorAll("section.how p")].every((p) => p.textContent.length <= 240)'), true, 'sezioni corte');
+  assert.strictEqual(await ev('!!document.querySelector("section.how a[href=\"#/oggi\"]") && !!document.querySelector("section.how a[href=\"#/ripasso\"]") && !!document.querySelector("section.how #sessione a")'), true);
+  await noOverflow('come funziona'); await targets('come funziona');
+  await go('#/altro');
+  await waitFor('!!document.querySelector("main a.row[href=\"#/come-funziona\"]")', 'voce Come funziona in Altro');
+  await ev('(() => { const a = document.querySelector("main a.row[href=\"#/come-funziona\"]"); a.click(); a.click(); a.click(); return true; })()');
+  await waitFor('document.querySelectorAll("section.how").length === 7 && document.querySelectorAll("main h1").length === 1', 'come funziona dopo i tocchi');
+
+  // Telefono stretto e largo, tema scuro: niente scroll orizzontale, etichette del menu che non si toccano
+  for (const w of [340, 390]) {
+    await c.send('Emulation.setDeviceMetricsOverride', { width: w, height: 740, deviceScaleFactor: 1, mobile: true });
+    await go('#/area/algoritmi');
+    await waitFor('!!document.querySelector("#adesso")', 'area a ' + w);
+    await ev('document.querySelectorAll("ul.steps li button.step")[2].click()');
+    await noOverflow('area a ' + w + ' px'); await targets('area a ' + w + ' px');
+    assert.strictEqual(await ev('(() => { const l = [...document.querySelectorAll("#nav .lbl")].map((e) => e.getBoundingClientRect()); return l.every((r, i) => i === 0 || r.left >= l[i - 1].right + 2); })()'), true, 'etichette del menu separate a ' + w + ' px');
+    await go('#/oggi');
+    await waitFor('!!document.querySelector("section.hero")', 'oggi a ' + w);
+    await noOverflow('oggi a ' + w + ' px'); await targets('oggi a ' + w + ' px');
+  }
+  await c.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: 'dark' }] });
+  await go('#/area/algoritmi');
+  await waitFor('!!document.querySelector("#adesso")', 'area in scuro');
+  await noOverflow('area in scuro');
+  await c.send('Emulation.setEmulatedMedia', { features: [] });
+  await c.send('Emulation.setDeviceMetricsOverride', { width: 360, height: 740, deviceScaleFactor: 1, mobile: true });
 
   // Verifiche (il vecchio indirizzo porta alla scheda nuova) e Da ripassare, con HTML ostile nei file
   await go('#/verifiche');
