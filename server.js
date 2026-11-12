@@ -144,6 +144,12 @@ function createServer({ config, now = Date.now }) {
     if (p === '/api/resources') return send(res, 200, await data.resources());
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
     if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });
+    if (p === '/api/cerca') {
+      const q = (new URL(req.url, 'http://x').searchParams.get('q') || '').trim();
+      if (q.length < 2 || q.length > 80) return send(res, 400, { error: 'Scrivi da 2 a 80 caratteri' });
+      if (!/[\p{L}\p{N}]{1}/u.test(q)) return send(res, 400, { error: 'Scrivi almeno una lettera o un numero' });
+      return send(res, 200, await data.search(q));
+    }
     if (p === '/api/stats') return send(res, 200, await data.stats());
     if (p === '/api/riassunto') return send(res, 200, await data.riassunto());
     if (p === '/api/progress') return send(res, 200, { ...(await data.progress()), titles: await data.titles() });
