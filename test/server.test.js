@@ -383,11 +383,34 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
 
 test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) => {
   const { call, login, dir } = await start(t);
+  const bin = path.join(__dirname, '..', 'bin', 'riassunto.js');
+  const { execFileSync, spawnSync } = require('node:child_process');
   assert.strictEqual((await call('GET', '/api/riassunto')).status, 401);
+  const r0 = await (await call('GET', '/api/riassunto', null, await login())).json();
+  assert.deepStrictEqual(r0, { week: '2026-11-02', goalMinutes: 420, minutes: 45, sessions: 2, partsClosed: 1, pendingMinutes: 0, gapsOpen: 2, areas: [{ area: 'algoritmi', minutes: 45 }] });
+  assert.strictEqual(JSON.parse(execFileSync(process.execPath, [bin], { env: { ...process.env, STUDIO_DIR: dir } })).week.length, 10);
+
+  // dati sporchi: area non valida con minuti, nome in maiuscolo, durata nel passo, data impossibile, più di cinque aree
+  for (const n of ['a1', 'a2', 'a3', 'a4']) fs.writeFileSync(path.join(dir, 'programma', n + '.md'), '# ' + n + '\n');
+  fs.appendFileSync(path.join(dir, 'progressi.md'), [
+    '- 2026-11-04 | Algoritmi | Maiuscolo | ok | nessuna | 10 min', '- 2026-11-05 | constructor | x | ok | 20 min',
+    '- 2026-11-06 | sistemi | Video di 20 min | ok | nessuna | 45 min', '- 2026-11-32 | algoritmi | data impossibile | ok | 99 min',
+    '- 2026-11-04 | a1 | x | ok | 5 min', '- 2026-11-04 | a2 | x | ok | 15 min', '- 2026-11-04 | a3 | x | ok | 25 min', '- 2026-11-04 | a4 | x | ok | 35 min', ''].join('\n'));
+  fs.appendFileSync(path.join(dir, 'verifiche.md'), [
+    '', '## 2026-11-07 | algoritmi | Parte 1 | fine parte', 'Esito: superata', '', '## 2026-11-06 | sistemi | Parte 1 | fine parte', 'Esito: non ancora superata',
+    '', '## 2026-11-07 | sistemi | Parte 2 | fine parte', 'Esito: parziale, superate 3 su 5', '', '## 2026-10-20 | sistemi | Parte 3 | fine parte', 'Esito: superata', ''].join('\n'));
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), '- 2026-11-06 10:00 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Array] 30 min\n- 2026-10-01 10:00 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Vecchio] 50 min\n');
   const r = await (await call('GET', '/api/riassunto', null, await login())).json();
-  assert.deepStrictEqual(r, { week: '2026-11-02', goalMinutes: 420, minutes: 45, sessions: 2, partsClosed: 1, gapsOpen: 2, areas: [{ area: 'algoritmi', minutes: 45 }] });
-  const { execFileSync } = require('node:child_process');
-  const out = execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'riassunto.js')], { env: { ...process.env, STUDIO_DIR: dir } });
-  assert.strictEqual(JSON.parse(out).week.length, 10);
-  assert.throws(() => execFileSync(process.execPath, [path.join(__dirname, '..', 'bin', 'riassunto.js')], { env: { PATH: process.env.PATH }, stdio: 'pipe' }));
+  assert.deepStrictEqual(r, { week: '2026-11-02', goalMinutes: 420, minutes: 200, sessions: 9, partsClosed: 1, pendingMinutes: 30, gapsOpen: 2,
+    areas: [{ area: 'algoritmi', minutes: 55 }, { area: 'sistemi', minutes: 45 }, { area: 'a4', minutes: 35 }, { area: 'a3', minutes: 25 }, { area: 'a2', minutes: 15 }] });
+  assert.strictEqual((await call('GET', '/api/stats', null, await login())).status, 200);
+
+  // senza cartella o senza progressi.md: esito diverso da zero, niente riassunto di zeri
+  const run = (env) => spawnSync(process.execPath, [bin], { env, encoding: 'utf8' });
+  assert.strictEqual(run({ PATH: process.env.PATH }).status, 2);
+  assert.strictEqual(run({ PATH: process.env.PATH, STUDIO_DIR: path.join(dir, 'manca') }).status, 1);
+  fs.rmSync(path.join(dir, 'progressi.md'));
+  const miss = run({ PATH: process.env.PATH, STUDIO_DIR: dir });
+  assert.strictEqual(miss.status, 1);
+  assert.strictEqual(miss.stdout, '');
 });
