@@ -19,10 +19,11 @@ Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L
   - `Studio/` è questa cartella montata nel vault di Obsidian. Con `HS_OBSIDIAN_VAULT` (nome del vault) ogni nota e scheda ha «Apri in Obsidian»: `obsidian://open?vault=<nome>&file=Studio/<cartella>/<file>`; senza, il link non compare.
 - `feedback.md`: cosa il tutor ha cambiato dopo le segnalazioni.
 - `segnalazioni.md`: le segnalazioni dell'owner dall'app, una riga ciascuna: `- AAAA-MM-GG HH:MM | area | tipo | testo`.
-  - tipo: `manca` (manca qualcosa), `rifare` (spiegazione da rifare), `risorsa` (risorsa sbagliata), `altro`, oppure `fatto` (studio da solo, vedi sotto);
+  - tipo: `manca` (manca qualcosa), `rifare` (spiegazione da rifare), `risorsa` (risorsa sbagliata), `altro`, `fatto` (studio da solo, vedi sotto), oppure `ripassata` (lacuna ripassata, vedi sotto);
   - se riguarda un passo, il testo comincia con `[passo: …]`;
   - `|` e a capo nel testo sono sostituiti; massimo 500 caratteri;
   - `fatto`: l'owner ha studiato un passo senza il tutor: `- AAAA-MM-GG HH:MM | area | fatto | [passo: Parte N, Settimana N, testo del passo] 45 min` (minuti interi 1-999, il testo del passo è tagliato a 80 caratteri). Il passo resta «da verificare» nell'app: il tutor lo verifica con le sue domande, lo spunta `[x]`, scrive la riga in `progressi.md` con i minuti e toglie la riga. Una seconda richiesta uguale mentre la riga c'è non ne scrive un'altra;
+  - `ripassata`: l'owner ha ripassato una lacuna aperta di `verifiche.md`: `- AAAA-MM-GG HH:MM | area | ripassata | [lacuna: testo della lacuna]` (il testo è quello della riga `- [ ]`, con `|` e a capo sostituiti, tagliato a 400 caratteri). L'app accetta il tipo solo per una lacuna aperta di quell'area e non scrive una seconda riga uguale. Finché la riga c'è, l'app non conta la lacuna tra quelle da ripassare (non compare su **Oggi**, né nel badge del menu) e nel **Ripasso** la mostra «in attesa del tutor». Il tutor, alla sessione successiva, segna la lacuna `- [x]` in `verifiche.md` e toglie la riga; la lacuna in `verifiche.md` non viene modificata dall'app;
   - una segnalazione è aperta finché la riga sta nel file: il tutor la gestisce, la registra in `feedback.md` e la toglie.
 
 L'app tollera file mancanti o fuori formato: una riga che non capisce si mostra come testo, mai un errore.

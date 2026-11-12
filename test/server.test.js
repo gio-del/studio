@@ -226,6 +226,44 @@ test('fatto: richieste in parallelo sullo stesso passo scrivono una riga; testo 
   assert.match(lines[0], /\| fatto \| \[passo: Parte 1, Settimana 1, Passo <script>alert\(1\)<\/script>\] 20 min$/);
 });
 
+test('ripassata: solo lacune esistenti, una riga sola, la lacuna passa in attesa del tutor', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const get = async (p) => (await call('GET', p, null, c)).json();
+  const before = await get('/api/lacune');
+  assert.strictEqual(before.gaps.length, 2);
+  const g = { area: 'algoritmi', type: 'ripassata', text: 'hash map e collisioni' };
+  const ok = await call('POST', '/api/segnala', g, c);
+  assert.strictEqual(ok.status, 200);
+  assert.strictEqual((await ok.json()).already, false);
+  assert.strictEqual((await (await call('POST', '/api/segnala', g, c)).json()).already, true, 'secondo tocco: nessuna riga doppia');
+  await Promise.all(Array.from({ length: 6 }, () => call('POST', '/api/segnala', g, c)));
+  const file = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8');
+  assert.strictEqual(file, '- 2026-11-09 12:05 | algoritmi | ripassata | [lacuna: hash map e collisioni]\n');
+  const after = await get('/api/lacune');
+  assert.deepStrictEqual(after.gaps.map((x) => x.text), ['ricorsione <script>alert(1)</script>']);
+  assert.deepStrictEqual(after.waiting.map((x) => x.text), ['hash map e collisioni']);
+  assert.deepStrictEqual(after.perArea, { algoritmi: 1 });
+  const o = await get('/api/overview');
+  assert.strictEqual(o.gapsTotal, 1);
+  assert.strictEqual(o.firstGaps.length, 1);
+  assert.strictEqual((await get('/api/area/algoritmi')).gaps, 1);
+  const bad = [
+    { area: 'algoritmi', type: 'ripassata', text: 'non esiste' }, { area: 'algoritmi', type: 'ripassata', text: 'notazione O grande' }, // chiusa
+    { area: 'sistemi', type: 'ripassata', text: 'ricorsione <script>alert(1)</script>' }, // lacuna di un'altra area
+    { area: 'algoritmi', type: 'ripassata' }, { area: 'algoritmi', type: 'ripassata', text: '' }, { area: 'algoritmi', type: 'ripassata', text: 5 },
+    { area: 'nonesiste', type: 'ripassata', text: 'ricorsione' }, { type: 'ripassata', text: 'ricorsione' },
+  ];
+  for (const b of bad) assert.strictEqual((await call('POST', '/api/segnala', b, c)).status, 400, JSON.stringify(b));
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8'), file, 'le richieste rifiutate non scrivono');
+  // lacuna ostile: la riga resta su una sola riga
+  const r = await call('POST', '/api/segnala', { area: 'algoritmi', type: 'ripassata', text: 'ricorsione <script>alert(1)</script>' }, c);
+  assert.strictEqual(r.status, 200);
+  const lines = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, 2);
+  assert.strictEqual((await get('/api/lacune')).gaps.length, 0);
+});
+
 test('leetcode: file assente, vuoto, campi strani; passi del programma; statistiche per settimana', async (t) => {
   const { call, login, dir } = await start(t);
   const ck = await login();

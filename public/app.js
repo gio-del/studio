@@ -337,16 +337,43 @@ function listOf(bl) {
   return out;
 }
 
+// «Ripassata»: scrive una riga che il tutor gestisce; la lacuna passa subito «in attesa del tutor». Un invio solo.
+function gapCard(g, titles, onSent) {
+  const card = h('section', { class: 'card entry' },
+    h('div', { class: 'top' }, when(g.date), chip(areaName(g.area, titles), 'pri'), g.part ? chip(g.part) : null), h('p', { class: 'what' }, g.text));
+  if (!onSent) { card.append(h('div', { class: 'chips' }, chip('In attesa del tutor', 'ok'))); return card; }
+  const btn = h('button', { class: 'btn', type: 'button' }, icon('fatto'), 'Ripassata');
+  const err = h('div', { class: 'error', role: 'alert' });
+  btn.addEventListener('click', async () => {
+    if (btn.disabled) return;
+    btn.disabled = true; err.textContent = '';
+    try {
+      await api('/api/segnala', { area: g.area, type: 'ripassata', text: g.text });
+      onSent();
+      toast('Segnato: il tutor chiude la lacuna alla prossima sessione');
+    } catch (e) { err.textContent = e.message; btn.disabled = false; }
+  });
+  card.append(h('div', { class: 'actions' }, btn), err);
+  return card;
+}
+
 async function pageRipasso(main) {
-  const { gaps, titles } = await api('/api/lacune');
+  const { gaps, waiting = [], titles } = await api('/api/lacune');
   setBadge(gaps.length);
   main.append(h('h1', null, 'Da ripassare'));
-  if (!gaps.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
-  main.append(h('p', { class: 'muted' }, 'Le lacune rimaste aperte dopo le verifiche, la più vecchia in alto. Il tutor le chiude quando le hai ripassate.'));
+  if (!gaps.length && !waiting.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
+  main.append(h('p', { class: 'muted' }, 'Le lacune rimaste aperte dopo le verifiche, la più vecchia in alto. Quando le hai ripassate toccane «Ripassata»: il tutor le chiude alla prossima sessione.'));
+  const wait = h('div', { class: 'waiting' });
+  const open = h('div', { class: 'open' });
+  const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
+  const sync = () => { wtitle.hidden = !wait.children.length; setBadge(open.children.length); };
   for (const g of gaps) {
-    main.append(h('section', { class: 'card entry' },
-      h('div', { class: 'top' }, when(g.date), chip(areaName(g.area, titles), 'pri'), g.part ? chip(g.part) : null), h('p', { class: 'what' }, g.text)));
+    const card = gapCard(g, titles, () => { card.remove(); wait.append(gapCard(g, titles, null)); sync(); });
+    open.append(card);
   }
+  for (const g of waiting) wait.append(gapCard(g, titles, null));
+  main.append(open, wtitle, wait);
+  sync();
 }
 
 const DIFF = { Easy: 'Facile', Medium: 'Media', Hard: 'Difficile' };
