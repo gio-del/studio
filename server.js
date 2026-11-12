@@ -73,8 +73,9 @@ function createServer({ config, now = Date.now }) {
 
   async function segnala(req, res) {
     const b = await readJson(req);
-    const text = typeof b.text === 'string' ? b.text.trim() : '';
     if (!P.TIPI.includes(b.type)) return send(res, 400, { error: 'Tipo non valido' });
+    if (b.type === 'ripassata') return ripassata(b, res);
+    const text = typeof b.text === 'string' ? b.text.trim() : '';
     if (!text) return send(res, 400, { error: 'Scrivi cosa non va' });
     if (text.length > P.MAX_SEGNALAZIONE) return send(res, 400, { error: `Massimo ${P.MAX_SEGNALAZIONE} caratteri` });
     const a = typeof b.area === 'string' ? await data.area(b.area) : null;
@@ -88,6 +89,18 @@ function createServer({ config, now = Date.now }) {
     }
     await data.appendReport({ area: b.area, type: b.type, text: prefix + text });
     return send(res, 200, { ok: true });
+  }
+
+  // «Ripassata» su una lacuna aperta dell'area: una riga `ripassata` che il tutor gestisce. Una seconda richiesta non scrive di nuovo.
+  async function ripassata(b, res) {
+    const a = typeof b.area === 'string' ? await data.area(b.area) : null;
+    if (!a) return send(res, 400, { error: 'Area sconosciuta' });
+    const text = typeof b.text === 'string' ? b.text.trim() : '';
+    const g = await data.gaps();
+    const key = P.gapKey(b.area, text);
+    if (!text || ![...g.gaps, ...g.waiting].some((x) => x.area === b.area && P.gapKey(x.area, x.text) === key)) return send(res, 400, { error: 'Lacuna sconosciuta' });
+    const line = await data.appendReport({ area: b.area, type: 'ripassata', text: P.gapText(text) }, (cur) => P.ripassateKeys(P.parseReports(cur)).has(key));
+    return send(res, 200, { ok: true, already: line === null });
   }
 
   // «Fatto» su un passo, con i minuti: una riga `fatto` che il tutor verifica. Una seconda richiesta uguale non scrive di nuovo.

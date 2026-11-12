@@ -189,6 +189,29 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("a.gaplink")', 'lacune su Oggi');
   assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);
 
+  // Ripassata: tocchi ripetuti, una riga sola; la lacuna passa «in attesa del tutor» e sparisce da Oggi e dal badge
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main section.card").length === 2', 'ripasso con due lacune');
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '2');
+  await targets('ripasso con pulsanti');
+  const rip1 = 'document.querySelector("main .open section.card button")';
+  await ev('(() => { const b = ' + rip1 + '; b.click(); b.click(); b.click(); })()');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1', 'lacuna in attesa del tutor');
+  const gapRows = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter((l) => /\| ripassata \|/.test(l));
+  assert.strictEqual(gapRows.length, 1, 'tre tocchi, una riga');
+  assert.match(gapRows[0], /\| algoritmi \| ripassata \| \[lacuna: ricorsione <script>alert\(1\)<\/script>\]$/);
+  assert.match(await text(), /In attesa del tutor/);
+  assert.strictEqual(await ev('document.querySelectorAll("main .open section.card").length'), 1);
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '1');
+  assert.strictEqual(await ev('document.querySelectorAll("main script").length'), 0);
+  await noOverflow('ripasso dopo il tocco'); await targets('ripasso dopo il tocco');
+  await go('#/oggi');
+  await waitFor('/Prima ripassa: 1 lacuna aperta/.test(document.querySelector("main").innerText)', 'Oggi senza la lacuna ripassata');
+  assert.doesNotMatch(await text(), /ricorsione/);
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1', 'ripasso ricaricato');
+  assert.strictEqual(await ev('document.querySelectorAll("main .open section.card").length'), 1);
+
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);

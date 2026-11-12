@@ -121,3 +121,15 @@ test('progressi: minuti facoltativi dalla riga', () => {
   const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
   assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));
 });
+
+test('ripassata: tipo valido, testo della lacuna ripulito, righe aperte come insieme', () => {
+  assert.ok(P.TIPI.includes('ripassata'));
+  assert.strictEqual(P.gapText('a | b\nc'), '[lacuna: a / b c]');
+  assert.ok(P.gapText('x'.repeat(900)).length <= 411);
+  const line = P.reportLine({ date: '2026-11-09 12:05', area: 'algo', type: 'ripassata', text: P.gapText('a | b\nc'.repeat(200)) });
+  assert.ok(!line.includes('\n') && line.split('|').length === 4 && line.length < 560);
+  const rows = P.parseReports(`${P.reportLine({ date: '2026-11-09 12:05', area: 'algo', type: 'ripassata', text: P.gapText('uno') })}\n- 2026-11-09 12:06 | algo | altro | [lacuna: due]\nriga strana\n`);
+  const k = P.ripassateKeys(rows);
+  assert.ok(k.has(P.gapKey('algo', 'uno')));
+  assert.ok(!k.has(P.gapKey('algo', 'due')) && !k.has(P.gapKey('altra', 'uno')));
+});
