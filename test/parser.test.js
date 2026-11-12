@@ -136,3 +136,16 @@ test('ripassata: tipo valido, testo della lacuna ripulito, righe aperte come ins
   assert.ok(k.has(P.gapKey('algo', 'uno')));
   assert.ok(!k.has(P.gapKey('algo', 'due')) && !k.has(P.gapKey('altra', 'uno')));
 });
+
+test('stepMinutes: formati del tempo stimato, mai errori', () => {
+  assert.strictEqual(P.stepMinutes('30 min'), 30);
+  assert.strictEqual(P.stepMinutes('1 h'), 60);
+  assert.strictEqual(P.stepMinutes('2 h'), 120);
+  assert.strictEqual(P.stepMinutes('1h30'), 90);
+  assert.strictEqual(P.stepMinutes('1 h 30 min'), 90);
+  assert.strictEqual(P.stepMinutes('1,5 h'), 90);
+  assert.strictEqual(P.stepMinutes('45 minuti'), 45);
+  for (const x of ['', null, undefined, 'circa un po', 'h', '0 min', '99999 min', '<img onerror=1>', 42, {}, 'x'.repeat(100000)]) assert.strictEqual(P.stepMinutes(x), null, String(x).slice(0, 20));
+  const prog = P.parseProgram('## Parte 1: A\n### Settimana 1\n- [ ] a (risorsa: [R](https://e.com), 1h30)\n- [ ] b\n');
+  assert.deepStrictEqual(P.allSteps(prog).map((x) => P.stepMinutes(x.step.time)), [90, null]);
+});

@@ -241,6 +241,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("main [style]").length >= 0 && document.querySelectorAll(".weeks:not(.lc) .bar").length'), 8);
   assert.strictEqual(await current(), 'Andamento');
   assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
+  assert.match(await text(), /(Al ritmo delle ultime 4 settimane: circa \d+ settimane? alla fine|Ritmo troppo basso per stimare)/);
+  assert.match(await text(), /contano 30 minuti/);
   await noOverflow('statistiche'); await targets('statistiche');
   assert.strictEqual(await ev('document.querySelectorAll("main script, main img").length'), 0);
   for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
