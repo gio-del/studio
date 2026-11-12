@@ -109,7 +109,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.match(area, /<b>strana<\/b>/);
   assert.strictEqual(await ev('document.querySelectorAll("main script, main b").length'), 0);
   // Passi con Markdown: nessun simbolo né indirizzo nel testo, link in più come pulsanti http(s)
-  assert.match(area, /Verifica grande a tempo\. Valid Sudoku \(LeetCode 36\) va nel ripasso, con dict e x\./);
+  assert.match(await ev('document.querySelector("main").textContent'), /Verifica grande a tempo\. Valid Sudoku \(LeetCode 36\) va nel ripasso, con dict e x\./);
   assert.strictEqual(await ev('[...document.querySelectorAll(".step-text")].filter((e) => /\\]\\(|https?:|\\*\\*|`/.test(e.textContent)).length'), 0, 'nessun simbolo Markdown nei passi');
   assert.strictEqual(await ev('[...document.querySelectorAll(".step-panel a.btn")].filter((a) => a.textContent.includes("LeetCode 36") && a.href === "https://leetcode.com/problems/valid-sudoku/").length'), 1, 'risorsa in più nel pannello');
   assert.strictEqual(await ev('[...document.querySelectorAll("a[href]")].filter((a) => !/^(https?:\\/\\/|#|\\/)/.test(a.getAttribute("href"))).length'), 0);
