@@ -121,8 +121,8 @@ test('fatto: riga con i minuti, lettura e limiti', () => {
 });
 
 test('progressi: minuti facoltativi dalla riga', () => {
-  const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | 120 minuti di ripasso | ok');
-  assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 0].map((v, i) => (i === 2 ? 120 : v)));
+  const r = P.parseProgress('- 2026-11-09 | a | passo | ok | 25 min\n- 2026-11-09 | a | passo | ok\n- 2026-11-09 | a | passo | ok | 120 minuti');
+  assert.deepStrictEqual(r.map((x) => x.minutes), [25, 0, 120]);
 });
 
 test('ripassata: tipo valido, testo della lacuna ripulito, righe aperte come insieme', () => {
