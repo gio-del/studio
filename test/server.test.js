@@ -53,6 +53,8 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   const c = await login();
   const ov = await (await call('GET', '/api/overview', null, c)).json();
   assert.deepStrictEqual(ov.areas.map((a) => a.area), ['algoritmi', 'sistemi', 'strana']);
+  assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
+  assert.strictEqual(ov.streak, 1);
   const algo = ov.areas[0];
   assert.deepStrictEqual([algo.done, algo.total, algo.week, algo.next.text], [1, 5, 1, 'Array e stringhe']);
   const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();

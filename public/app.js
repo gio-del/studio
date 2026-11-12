@@ -214,6 +214,14 @@ async function pageOggi(main) {
   setBadge(o.gapsTotal);
   const by = Object.fromEntries(o.areas.map((a) => [a.area, a]));
   main.append(h('p', { class: 'overline' }, longDate(o.date)), h('h1', null, 'Oggi'));
+  if (o.week) {
+    const wm = Number(o.week.minutes) || 0;
+    const days = Number(o.streak) || 0;
+    main.append(h('div', { class: 'weekline', role: 'group', 'aria-label': 'La tua settimana' },
+      h('div', { class: 'small' }, h('strong', null, 'Questa settimana: '), `${wm ? hours(wm) : '0 h'} di ${hours(o.week.goalMinutes)}`),
+      bar(wm, o.week.goalMinutes),
+      h('div', { class: 'small muted' }, `Giorni di studio di fila: ${days}`)));
+  }
   if (!o.areas.length) { main.append(empty('programma', 'Nessun programma ancora', 'Il tutor lo crea alla prima sessione.'), tutorLine(o.session)); return; }
   if (o.gapsTotal) {
     main.append(h('section', { class: 'card review', 'aria-label': 'Da ripassare' },
