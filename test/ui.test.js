@@ -89,6 +89,9 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
   assert.strictEqual(await ev('document.querySelector("#sessione a").rel'), 'noopener noreferrer');
   assert.strictEqual(await ev('document.querySelector("#sessione a").getBoundingClientRect().height >= 43.5'), true);
+  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 hGiorni di studio di fila: \d+/);
+  assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
+  assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);
   await noOverflow('oggi'); await targets('oggi');
 
   // Programma: tutte le aree
@@ -263,6 +266,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/oggi');
   await waitFor('!!document.querySelector("section.hero")', 'oggi in scuro');
   assert.notStrictEqual(await bg(), chiaro, 'lo sfondo cambia in tema scuro');
+  assert.strictEqual(await ev('!!document.querySelector(".weekline") && document.querySelector(".weekline").getBoundingClientRect().right <= innerWidth'), true, 'riga della settimana in scuro');
   await noOverflow('oggi in scuro');
   await c.send('Emulation.setEmulatedMedia', { features: [] });
 

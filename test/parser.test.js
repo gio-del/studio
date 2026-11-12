@@ -163,3 +163,19 @@ test('parser: testo pulito da link e simboli Markdown, risorse in più solo http
   assert.strictEqual(o.weeks[0].steps[0].text, '<img src=x onerror=alert(1)> h', 'resta testo, nessun HTML');
   assert.deepStrictEqual(o.weeks[0].steps[0].links, []);
 });
+
+test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del calendario', () => {
+  const r = (date, minutes) => ({ date, minutes });
+  const cal = P.parseCalendar('- a | lun,mar,mer,gio,ven | 09:00 | 60\n'); // sab e dom sono riposo
+  assert.strictEqual(P.streak([], cal, '2026-11-12'), 0);
+  assert.strictEqual(P.streak([r('2026-11-12', null), r('2026-11-11', 0)], cal, '2026-11-12'), 0, 'senza minuti non conta');
+  assert.strictEqual(P.streak(undefined, undefined, '2026-11-12'), 0);
+  const rows = [r('2026-11-11', 30), r('2026-11-10', 20), r('2026-11-09', 45)];
+  assert.strictEqual(P.streak(rows, cal, '2026-11-12'), 3, 'manca solo oggi: la serie non si azzera');
+  assert.strictEqual(P.streak([r('2026-11-12', 10), ...rows], cal, '2026-11-12'), 4);
+  assert.strictEqual(P.streak([r('2026-11-12', 10), r('2026-11-10', 20)], cal, '2026-11-12'), 1, 'ieri vuoto e non di riposo: serie interrotta');
+  assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-09'), 2, 'sab e dom di riposo non interrompono (oggi lun senza studio)');
+  assert.strictEqual(P.streak([r('2026-11-13', 10), r('2026-11-12', 10)], cal, '2026-11-14'), 2, 'oggi di riposo, senza studio');
+  assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-10'), 0, 'lunedì vuoto: interrotta');
+  assert.strictEqual(P.streak([r('2026-11-10', 5), r('2026-11-08', 5)], [], '2026-11-10'), 1, 'senza calendario nessun riposo');
+});
