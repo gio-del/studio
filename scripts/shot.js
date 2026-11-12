@@ -98,8 +98,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   await ev("(() => { document.getElementById('nav').style.position = 'static'; document.body.style.padding = '0'; document.getElementById('main').style.paddingBottom = '16px'; return true; })()");
   const h = await ev('document.documentElement.scrollHeight');
   const r = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: true, clip: { x: 0, y: 0, width: w, height: h, scale: 1 } });
-  process.stdout.write(Buffer.from(r.data, 'base64'), () => {
+  process.stdout.write(Buffer.from(r.data, 'base64'), async () => {
+    const gone = new Promise((ok) => ch.once('exit', ok));
     ch.kill('SIGKILL'); ws.close(); server.close();
+    await gone; await sleep(300);
     fs.rmSync(dir, { recursive: true, force: true });
     try { fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch { /* resta in /tmp */ }
     process.exit(0);

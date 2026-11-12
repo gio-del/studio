@@ -242,7 +242,8 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .side-actions .btn { justify-content: flex-start; white-space: nowrap; }
 .side-actions .btn .out { margin-left: auto; color: var(--muted); }
 .low-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s2); }
-.btn.help { min-width: 44px; padding: 0; }
+.low-actions .btn { justify-content: flex-start; text-align: left; }
+.btn.help { min-width: 44px; padding: 0; justify-content: center; }
 .btn.help .ic { width: 22px; height: 22px; }
 .more-link { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; margin-top: var(--s2); font-weight: 650; text-decoration: none; }
 .progress { margin: var(--s4) 0 var(--s3); }
