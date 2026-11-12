@@ -6,7 +6,7 @@ set -eu
 cd "$(dirname "$0")"
 
 backend() {
-	for f in server.js lib/*.js public/*.js scripts/*.js; do
+	for f in server.js lib/*.js bin/*.js public/*.js scripts/*.js; do
 		[ -f "$f" ] && node --check "$f"
 	done
 	node --test test/*.test.js

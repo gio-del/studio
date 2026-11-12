@@ -2,6 +2,7 @@
 // Tutto il testo dei file di studio entra nella pagina solo con textContent (sono dati non fidati).
 const $ = (s) => document.querySelector(s);
 const TIPI = [['manca', 'Manca qualcosa'], ['rifare', 'Spiegazione da rifare'], ['risorsa', 'Risorsa sbagliata'], ['altro', 'Altro']];
+const TIPI_VISTA = [...TIPI, ['fatto', 'Fatto, da verificare']];
 const SVG = 'http://www.w3.org/2000/svg';
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
 
@@ -33,6 +34,7 @@ const ICONS = {
   tutor: [['path', { d: 'M4 5h16v11H9l-5 4z' }]],
   esci: [['path', { d: 'M10 4H5v16h5M14 8l4 4-4 4M18 12H9' }]],
   calendario: [['rect', { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ['path', { d: 'M4 10h16M8 3v4M16 3v4' }]],
+  codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
   lacuna: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 8v5M12 16.5v.01' }]],
 };
 function icon(name, cls) {
@@ -152,6 +154,44 @@ function reportBox(area, step) {
   return { open, holder };
 }
 
+// Minuti proposti dal tempo stimato del passo ("2 h", "45 min"); 30 se non si capisce.
+function guessMinutes(time) {
+  const t = String(time || '').toLowerCase();
+  let m = /(\d+(?:[.,]\d+)?)\s*(?:h|or[ae])\b/.exec(t);
+  if (m) return Math.min(999, Math.max(1, Math.round(parseFloat(m[1].replace(',', '.')) * 60)));
+  m = /(\d+)\s*min/.exec(t);
+  return m ? Math.min(999, Math.max(1, Number(m[1]))) : 30;
+}
+
+// «Fatto» con i minuti: scrive una riga che il tutor verifica; il passo resta «da verificare». Un invio solo.
+function doneBox(area, step, time, onSent) {
+  const holder = h('div');
+  const open = h('button', { class: 'btn', type: 'button', 'aria-expanded': 'false' }, icon('fatto'), 'Fatto');
+  let form = null;
+  open.addEventListener('click', () => {
+    if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
+    open.setAttribute('aria-expanded', 'true');
+    const min = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1, value: guessMinutes(time), 'aria-label': 'Minuti studiati' });
+    const err = h('div', { class: 'error', role: 'alert' });
+    const send = h('button', { class: 'btn', type: 'submit' }, 'Invia');
+    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, err, h('div', { class: 'row-btn' }, send));
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      if (send.disabled) return;
+      const n = Number(min.value);
+      if (!Number.isInteger(n) || n < 1 || n > 999) { err.textContent = 'Scrivi i minuti, da 1 a 999'; return; }
+      send.disabled = true; err.textContent = '';
+      try {
+        await api('/api/fatto', { area, step, minutes: n });
+        form.remove(); form = null; onSent(n);
+        toast('Segnato: il tutor lo verifica alla prossima sessione');
+      } catch (e) { err.textContent = e.message; send.disabled = false; }
+    });
+    holder.append(form); min.focus(); min.select();
+  });
+  return { open, holder };
+}
+
 function tutorLine(session) {
   if (!session || (!session.url && !session.name)) return null;
   const nome = session.name ? `«${session.name}»` : 'del tutor';
@@ -219,14 +259,30 @@ async function pageProgramma(main) {
   }
 }
 
+// Note dell'owner e schede del tutor che riguardano il passo (sola lettura); il link a Obsidian c'è solo se l'app lo conosce.
+function docsBlock(docs) {
+  if (!docs || !docs.length) return null;
+  return h('div', { class: 'docs' }, docs.map((d) => h('div', { class: 'doc' },
+    h('div', { class: 'small muted' }, d.kind === 'Note' ? 'Nota' : 'Scheda'),
+    h('div', { class: 'doc-title' }, d.title),
+    d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
+    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null)));
+}
+
 function stepItem(a, p, w, s, i, isNext) {
   const id = `passo-${p.n}-${w.n}-${i}`;
   const rb = reportBox(a.area, { part: p.n, week: w.n, index: i });
   const res = s.resource;
+  const pending = h('div', { class: 'chips', id: `${id}-verifica` });
+  const showPending = (min) => { pending.replaceChildren(chip(`Da verificare · ${min} min`, 'pri')); };
+  const fb = s.done ? null : doneBox(a.area, { part: p.n, week: w.n, index: i }, s.time, (min) => { showPending(min); fb.open.remove(); });
+  if (s.pending) showPending(s.pending);
   const panel = h('div', { class: 'step-panel', id, hidden: isNext ? false : '' },
     res && (res.title || res.url) ? h('div', { class: 'res' }, icon('libro'), h('span', null, res.title || 'Risorsa')) : null,
     s.time ? h('div', { class: 'chips' }, chip(s.time, '', 'tempo')) : null,
-    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, rb.open), rb.holder);
+    docsBlock(s.docs),
+    pending,
+    h('div', { class: 'actions' }, res ? extBtn('Apri la risorsa', res.url) : null, fb && !s.pending ? fb.open : null, rb.open), fb ? fb.holder : null, rb.holder);
   const btn = h('button', { class: 'step', type: 'button', 'aria-expanded': String(!!isNext), 'aria-controls': id },
     icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state'),
     h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Prossimo: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text)),
@@ -293,11 +349,99 @@ async function pageRipasso(main) {
   }
 }
 
+const DIFF = { Easy: 'Facile', Medium: 'Media', Hard: 'Difficile' };
+const diffChip = (d) => (d ? chip(DIFF[d] || d, d === 'Easy' ? 'ok' : d === 'Medium' ? 'warn' : 'ko') : null);
+const rangeLabel = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? `${+m[3]} ${MESI[m[2] - 1] || ''}` : String(iso || ''); };
+function updatedLine(ts) {
+  const d = typeof ts === 'number' && Number.isFinite(ts) ? new Date(ts * 1000) : null;
+  if (!d || Number.isNaN(d.getTime())) return 'Nessun dato ancora: il file leetcode.json non c\'è o non si legge.';
+  const p2 = (n) => String(n).padStart(2, '0');
+  return `Aggiornato il ${d.getDate()} ${MESI[d.getMonth()]} ${d.getFullYear()}, ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+
+
+// Riempimento di una barra: via CSSOM, gli attributi style inline sono vietati dalla CSP.
+function fillSpan(pct) { const s = h('span'); s.style.width = `${pct}%`; return s; }
+// Ore e minuti: 90 -> «1 h 30», 45 -> «45 min».
+function hours(min) {
+  const m = Math.max(0, Math.round(Number(min) || 0));
+  return m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ''}`;
+}
+// Esercizi LeetCode per settimana (stesso ordine di s.weeks, la più vecchia per prima nei dati).
+function leetcodeWeeks(main, s) {
+  const counts = s.leetcode || [];
+  const max = Math.max(1, ...counts);
+  const total = counts.reduce((a, b) => a + b, 0);
+  main.append(h('h2', null, 'LeetCode, esercizi per settimana'), h('p', { class: 'small muted' }, updatedLine(s.updated)));
+  const card = h('section', { class: 'card weeks lc', 'aria-label': 'Esercizi LeetCode per settimana' });
+  s.weeks.forEach((w, i) => {
+    card.append(h('div', { class: 'wrow' }, h('span', { class: 'wl' }, `dal ${rangeLabel(w.start)}`),
+      h('div', { class: 'bar', 'aria-hidden': 'true' }, fillSpan(Math.round((100 * (counts[i] || 0)) / max))), h('span', { class: 'count' }, String(counts[i] || 0))));
+  });
+  main.append(card, h('p', { class: 'small muted' }, total ? `${plural(total, 'esercizio', 'esercizi')} nelle ultime 8 settimane.` : 'Nessun esercizio nelle ultime 8 settimane.'),
+    h('a', { class: 'btn ghost', href: '#/leetcode' }, icon('codice'), 'Apri LeetCode'));
+}
+
+async function pageStatistiche(main) {
+  const s = await api('/api/stats');
+  const goal = s.goalMinutes;
+  const cur = s.weeks[s.weeks.length - 1];
+  const pct = Math.min(100, Math.round((100 * cur.minutes) / goal));
+  main.append(h('section', { class: 'card stat-hero' }, h('p', { class: 'overline' }, 'Questa settimana'),
+    h('p', { class: 'big' }, hours(cur.minutes), h('span', { class: 'muted' }, ` su ${hours(goal)}`)),
+    h('div', { class: `bar goalbar${cur.minutes >= goal ? ' reached' : ''}`, role: 'progressbar', 'aria-label': 'Ore della settimana', 'aria-valuemin': 0, 'aria-valuemax': goal, 'aria-valuenow': Math.min(cur.minutes, goal) }, fillSpan(pct)),
+    h('p', { class: 'small muted' }, cur.minutes >= goal ? 'Obiettivo raggiunto.' : `Mancano ${hours(goal - cur.minutes)} all'obiettivo.`)));
+  if (!s.weeks.some((w) => w.minutes) && !s.areas.some((x) => x.sessions)) main.append(empty('andamento', 'Ancora nessuna ora registrata', 'Il tutor scrive i minuti di ogni sessione in progressi.md.'));
+  main.append(h('h2', null, 'Ore per settimana'));
+  const wk = h('div', { class: 'card weeks' });
+  for (const w of [...s.weeks].reverse()) {
+    const p = Math.min(100, Math.round((100 * w.minutes) / goal));
+    const lbl = w === cur ? 'Questa' : when(w.start);
+    wk.append(h('div', { class: 'wrow' }, h('span', { class: 'wl' }, lbl),
+      h('div', { class: `bar${w.minutes >= goal ? ' reached' : ''}`, role: 'img', 'aria-label': `Settimana dal ${w.start}: ${hours(w.minutes)} su ${hours(goal)}` }, fillSpan(p)),
+      h('span', { class: 'count' }, hours(w.minutes))));
+  }
+  main.append(wk);
+  main.append(h('h2', null, 'Per area'));
+  const list = h('div', { class: 'list' });
+  for (const a of s.areas) {
+    list.append(h('a', { class: 'row', href: areaHref(a.area) }, h('div', { class: 'grow' },
+      h('div', { class: 'title' }, a.title),
+      bar(a.done, a.total),
+      h('div', { class: 'chips' }, chip(`${a.done}/${a.total} passi`), chip(hours(a.minutes) + ' in tutto'), chip(a.weekMinutes ? `${hours(a.weekMinutes)} questa settimana` : 'ferma questa settimana', a.weekMinutes ? 'pri' : 'gap'),
+        a.verifiche ? chip(`${a.superate}/${a.verifiche} verifiche superate`, a.superate === a.verifiche ? 'ok' : '') : null)),
+      icon('avanti', 'chev')));
+  }
+  if (!s.areas.length) main.append(empty('programma', 'Nessuna area', 'Le aree compaiono quando il tutor scrive il programma.'));
+  else main.append(list);
+  main.append(h('p', { class: 'small muted' }, `In tutto: ${s.totals.done} passi su ${s.totals.total}, ${s.totals.superate} verifiche superate su ${s.totals.verifiche}, ${hours(s.totals.minutes)} di studio.`));
+  leetcodeWeeks(main, s);
+}
+
+async function pageLeetcode(main) {
+  const d = await api('/api/leetcode');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'LeetCode'), h('p', { class: 'small muted' }, updatedLine(d.updated)));
+  if (d.steps.length) {
+    main.append(h('h2', null, 'Dal programma'));
+    for (const e of d.steps) {
+      main.append(h('section', { class: 'card entry' }, h('div', { class: 'top' }, icon(e.done ? 'fatto' : 'dafare', 'state'), chip(e.done ? 'Fatto' : 'Da fare', e.done ? 'ok' : ''), diffChip(e.difficulty)),
+        h('p', { class: 'what' }, e.title), extBtn('Apri il problema', e.url, 'ghost')));
+    }
+  }
+  main.append(h('h2', null, 'Esercizi fatti'));
+  if (!d.solved.length) main.append(empty('codice', 'Nessun esercizio ancora', 'Qui compaiono gli invii accettati del tuo profilo.'));
+  for (const e of d.solved) {
+    main.append(h('section', { class: 'card entry' }, h('div', { class: 'top' }, when(e.date), diffChip(e.difficulty)), h('p', { class: 'what' }, link(e.title, e.url))));
+  }
+}
+
 async function pageAndamento(main, tab) {
-  const t = tab === 'verifiche' ? 'verifiche' : 'sessioni';
+  const t = tab === 'verifiche' || tab === 'statistiche' ? tab : 'sessioni';
   main.append(h('h1', null, 'Andamento'), h('nav', { class: 'seg', 'aria-label': 'Cosa guardare' },
     h('a', { href: '#/andamento/sessioni', 'aria-current': t === 'sessioni' ? 'page' : false }, 'Sessioni'),
-    h('a', { href: '#/andamento/verifiche', 'aria-current': t === 'verifiche' ? 'page' : false }, 'Verifiche')));
+    h('a', { href: '#/andamento/verifiche', 'aria-current': t === 'verifiche' ? 'page' : false }, 'Verifiche'),
+    h('a', { href: '#/andamento/statistiche', 'aria-current': t === 'statistiche' ? 'page' : false }, 'Statistiche')));
+  if (t === 'statistiche') return pageStatistiche(main);
   if (t === 'sessioni') {
     const { rows, titles } = await api('/api/progress');
     if (!rows.length) main.append(empty('andamento', 'Nessuna sessione registrata', 'Il tutor scrive una riga dopo ogni sessione.'));
@@ -339,7 +483,7 @@ async function pageFeedback(main) {
   if (!open.length) main.append(h('p', { class: 'muted' }, 'Nessuna segnalazione aperta.'));
   for (const r of open) {
     main.append(h('section', { class: 'card entry' }, r.raw ? r.raw : [
-      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text)]));
+      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI_VISTA.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text)]));
   }
   main.append(h('h2', null, 'Cosa ha cambiato il tutor'));
   main.append(bl.length ? h('section', { class: 'card prose' }, listOf(bl)) : h('p', { class: 'muted' }, 'Ancora niente.'));
@@ -347,11 +491,28 @@ async function pageFeedback(main) {
   if (t) main.append(h('h2', null, 'Parla con il tutor'), h('section', { class: 'card' }, t));
 }
 
+const GIORNO = { lun: 'Lunedì', mar: 'Martedì', mer: 'Mercoledì', gio: 'Giovedì', ven: 'Venerdì', sab: 'Sabato', dom: 'Domenica' };
+async function pageCalendario(main) {
+  const { days } = await api('/api/calendario');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
+  for (const d of days) {
+    const dd = d.date.split('-');
+    const head = h('div', { class: 'top' }, h('h2', null, `${GIORNO[d.day] || d.day} ${Number(dd[2])} ${MESI[Number(dd[1]) - 1] || ''}`), d.today ? chip('Oggi', 'pri') : null);
+    const body = d.items.length
+      ? [h('ul', { class: 'cal-items' }, d.items.map((e) => h('li', null, h('span', { class: 'cal-time' }, e.time), h('span', { class: 'grow' }, e.area ? h('a', { href: `#/area/${encodeURIComponent(e.area)}` }, e.title) : e.title), h('span', { class: 'muted' }, `${e.minutes} min`)))),
+        h('p', { class: 'small muted' }, `Fatti ${d.done} min su ${d.planned} previsti`)]
+      : [h('p', { class: 'muted' }, 'Riposo'), d.done ? h('p', { class: 'small muted' }, `Fatti ${d.done} min`) : null];
+    main.append(h('section', { class: `card cal-day${d.today ? ' is-today' : ''}`, 'data-date': d.date, 'aria-current': d.today ? 'date' : false }, head, body));
+  }
+}
+
 async function pageAltro(main) {
   const f = await api('/api/feedback');
   const item = (href, ic, title, sub) => h('a', { class: 'row', href }, icon(ic), h('span', { class: 'grow' }, h('span', { class: 'title' }, title), h('span', { class: 'small muted sub' }, sub)), icon('avanti', 'chev'));
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
+    item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
+    item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
     item('#/feedback', 'segnala', 'Segnalazioni', f.open.length ? `${plural(f.open.length, 'aperta', 'aperte')}` : 'Cosa hai segnalato e cosa ha cambiato il tutor')),
     t ? h('section', { class: 'card' }, t) : null,
@@ -378,7 +539,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', feedback: 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -414,6 +575,8 @@ async function route() {
     else if (known === 'programma') await pageProgramma(main);
     else if (known === 'ripasso') await pageRipasso(main);
     else if (known === 'andamento') await pageAndamento(main, arg);
+    else if (known === 'calendario') await pageCalendario(main);
+    else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);
     else if (known === 'feedback') await pageFeedback(main);
     else if (known === 'altro') await pageAltro(main);

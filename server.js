@@ -31,14 +31,17 @@ function readConfig(env) {
     // Facoltativi: dove aprire la sessione del tutor (URL http(s) o solo il nome); nessun valore nel repo.
     sessionUrl: /^https?:\/\/\S+$/i.test(env.STUDIO_SESSION_URL || '') ? env.STUDIO_SESSION_URL : null,
     sessionName: (env.STUDIO_SESSION_NAME || '').trim().slice(0, 60) || null,
+    // Facoltativo: nome del vault di Obsidian per i link «Apri in Obsidian»; senza, i link non compaiono.
+    obsidianVault: /^[^\u0000-\u001f\u007f]{1,100}$/.test((env.HS_OBSIDIAN_VAULT || '').trim()) ? env.HS_OBSIDIAN_VAULT.trim() : null,
+    stateDir: env.STATE_DIR ? path.resolve(env.STATE_DIR) : null,
     user: env.AUTH_USER || 'studio',
     password,
   };
 }
 
 function createServer({ config, now = Date.now }) {
-  const data = createData(config.studioDir, now);
-  const auth = createAuth({ user: config.user, password: config.password, now });
+  const data = createData(config.studioDir, now, { obsidianVault: config.obsidianVault });
+  const auth = createAuth({ user: config.user, password: config.password, now, stateDir: config.stateDir });
   const publicDir = path.join(__dirname, 'public');
 
   function send(res, status, body, extra = {}) {
@@ -87,6 +90,25 @@ function createServer({ config, now = Date.now }) {
     return send(res, 200, { ok: true });
   }
 
+  // «Fatto» su un passo, con i minuti: una riga `fatto` che il tutor verifica. Una seconda richiesta uguale non scrive di nuovo.
+  async function fatto(req, res) {
+    const b = await readJson(req);
+    if (!P.validMinutes(b.minutes)) return send(res, 400, { error: `Minuti da 1 a ${P.MAX_MINUTES}` });
+    const a = typeof b.area === 'string' ? await data.area(b.area) : null;
+    if (!a) return send(res, 400, { error: 'Area sconosciuta' });
+    const { part, week, index } = b.step && typeof b.step === 'object' ? b.step : {};
+    const found = a.parts.find((p) => p.n === part)?.weeks.find((w) => w.n === week)?.steps[index];
+    if (!found) return send(res, 400, { error: 'Passo sconosciuto' });
+    if (found.done) return send(res, 400, { error: 'Passo già fatto' });
+    const key = P.fattoText(part, week, found.text, '').replace(/ min$/, '');
+    const same = (cur) => cur.split(/\r?\n/).some((l) => {
+      const r = P.parseReports(l)[0];
+      return r && r.type === 'fatto' && r.area === b.area && r.text.replace(/\d{1,3} min$/, '') === key;
+    });
+    const line = await data.appendReport({ area: b.area, type: 'fatto', text: P.fattoText(part, week, found.text, b.minutes) }, same);
+    return send(res, 200, { ok: true, already: line === null });
+  }
+
   async function api(req, res, p) {
     if (req.method === 'POST' && p === '/api/login') {
       const b = await readJson(req);
@@ -101,14 +123,20 @@ function createServer({ config, now = Date.now }) {
       return send(res, 200, { ok: true }, { 'set-cookie': 'sid=; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=0' });
     }
     if (req.method === 'POST' && p === '/api/segnala') return segnala(req, res);
+    if (req.method === 'POST' && p === '/api/fatto') return fatto(req, res);
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     const session = { url: config.sessionUrl || null, name: config.sessionName || null };
     if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });
+    if (p === '/api/calendario') return send(res, 200, await data.calendar());
     if (p === '/api/resources') return send(res, 200, await data.resources());
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
     if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });
+    if (p === '/api/stats') return send(res, 200, await data.stats());
+    if (p === '/api/riassunto') return send(res, 200, await data.riassunto());
     if (p === '/api/progress') return send(res, 200, { ...(await data.progress()), titles: await data.titles() });
     if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), titles: await data.titles(), session });
+    if (p === '/api/leetcode') return send(res, 200, await data.leetcode());
+    if (p === '/api/stats') return send(res, 200, await data.stats());
     const m = /^\/api\/area\/([A-Za-z0-9_-]+)$/.exec(p);
     if (m) { const a = await data.area(m[1]); return a ? send(res, 200, a) : send(res, 404, { error: 'Area sconosciuta' }); }
     return send(res, 404, { error: 'Non trovato' });
