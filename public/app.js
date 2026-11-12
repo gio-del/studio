@@ -35,6 +35,7 @@ const ICONS = {
   esci: [['path', { d: 'M10 4H5v16h5M14 8l4 4-4 4M18 12H9' }]],
   calendario: [['rect', { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ['path', { d: 'M4 10h16M8 3v4M16 3v4' }]],
   codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
+  cerca: [['circle', { cx: 11, cy: 11, r: 6.5 }], ['path', { d: 'M16 16l5 5' }]],
   lacuna: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 8v5M12 16.5v.01' }]],
 };
 function icon(name, cls) {
@@ -521,6 +522,41 @@ async function pageFeedback(main) {
 }
 
 const GIORNO = { lun: 'Lunedì', mar: 'Martedì', mer: 'Mercoledì', gio: 'Giovedì', ven: 'Venerdì', sab: 'Sabato', dom: 'Domenica' };
+// Cerca: sola lettura. Il testo dei risultati è sempre textContent; i link a Obsidian arrivano già filtrati dal server.
+async function pageCerca(main, q) {
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Cerca'));
+  const input = h('input', { type: 'search', id: 'cerca', maxlength: 80, 'aria-label': 'Cerca', placeholder: 'Cerca un concetto', autocomplete: 'off', value: q });
+  const out = h('div', { id: 'risultati', 'aria-live': 'polite' });
+  main.append(h('form', { class: 'search', role: 'search', onsubmit: (e) => e.preventDefault() }, input), out);
+  const group = (title, items) => (items.length ? h('section', { class: 'card group' }, h('h2', null, `${title} (${items.length})`), h('div', { class: 'list' }, items)) : null);
+  const row = (href, title, sub) => h('a', { class: 'row', href }, h('span', { class: 'grow' }, h('span', { class: 'title' }, title), sub ? h('span', { class: 'small muted sub' }, sub) : null), icon('avanti', 'chev'));
+  const docRow = (d) => h('div', { class: 'doc' }, h('div', { class: 'doc-title' }, d.title),
+    d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
+    d.url ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null);
+  let tick = 0, timer = null;
+  async function run() {
+    const my = ++tick;
+    const v = input.value.trim();
+    if (v.length < 2) { out.replaceChildren(h('p', { class: 'small muted' }, 'Scrivi almeno 2 caratteri.')); return; }
+    let r;
+    try { r = await api(`/api/cerca?q=${encodeURIComponent(v)}`); } catch (e) { if (my === tick && e.message !== 'login') out.replaceChildren(h('p', { class: 'error', role: 'alert' }, e.message)); return; }
+    if (my !== tick) return;
+    const titles = Object.fromEntries(r.passi.map((p) => [p.area, p.title]));
+    const blocks = [
+      group('Passi', r.passi.map((p) => row(areaHref(p.area), p.text, `${p.title} · Parte ${p.part}, settimana ${p.week}${p.done ? ' · fatto' : ''}`))),
+      group('Lacune aperte', r.lacune.map((g) => row('#/ripasso', g.text, areaName(g.area, titles)))),
+      group('Note', r.note.map(docRow)),
+      group('Schede', r.schede.map(docRow)),
+    ].filter(Boolean);
+    out.replaceChildren(...(blocks.length ? blocks : [empty('cerca', 'Nessun risultato', 'Prova con un\u2019altra parola.')]));
+  }
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => { const v = input.value.trim(); history.replaceState(null, '', v ? `#/cerca?q=${encodeURIComponent(v)}` : '#/cerca'); run(); }, 200);
+  });
+  await run();
+}
+
 async function pageCalendario(main) {
   const { days } = await api('/api/calendario');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
@@ -540,6 +576,7 @@ async function pageAltro(main) {
   const item = (href, ic, title, sub) => h('a', { class: 'row', href }, icon(ic), h('span', { class: 'grow' }, h('span', { class: 'title' }, title), h('span', { class: 'small muted sub' }, sub)), icon('avanti', 'chev'));
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
+    item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note e schede'),
     item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
     item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
@@ -568,7 +605,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro', cerca: 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -595,7 +632,8 @@ async function route() {
   const hash = location.hash.replace(/^#\/?/, '') || 'oggi';
   if (ALIAS[hash]) { location.replace(`#/${ALIAS[hash]}`); return; }
   if (current !== null) scrollAt.set(current, window.scrollY);
-  const [page, arg] = hash.split('/');
+  const [pathPart, query = ''] = hash.split('?');
+  const [page, arg] = pathPart.split('/');
   const known = Object.prototype.hasOwnProperty.call(TAB_OF, page) ? page : 'oggi';
   const main = h('div');
   const slow = setTimeout(() => { if (my === seq) $('#main').replaceChildren(h('p', { class: 'loading', role: 'status' }, 'Carico…')); }, 400);
@@ -604,6 +642,7 @@ async function route() {
     else if (known === 'programma') await pageProgramma(main);
     else if (known === 'ripasso') await pageRipasso(main);
     else if (known === 'andamento') await pageAndamento(main, arg);
+    else if (known === 'cerca') await pageCerca(main, new URLSearchParams(query).get('q') || '');
     else if (known === 'calendario') await pageCalendario(main);
     else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);
