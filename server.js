@@ -156,7 +156,7 @@ function createServer({ config, now = Date.now }) {
     if (p === '/api/feedback') return send(res, 200, { ...(await data.feedback()), titles: await data.titles(), session });
     if (p === '/api/leetcode') return send(res, 200, await data.leetcode());
     const m = /^\/api\/area\/([A-Za-z0-9_-]+)$/.exec(p);
-    if (m) { const a = await data.area(m[1]); return a ? send(res, 200, a) : send(res, 404, { error: 'Area sconosciuta' }); }
+    if (m) { const a = await data.area(m[1]); return a ? send(res, 200, { ...a, session }) : send(res, 404, { error: 'Area sconosciuta' }); }
     return send(res, 404, { error: 'Non trovato' });
   }
 

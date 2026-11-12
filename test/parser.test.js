@@ -179,3 +179,28 @@ test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del 
   assert.strictEqual(P.streak([r('2026-11-06', 10), r('2026-11-05', 10)], cal, '2026-11-10'), 0, 'lunedì vuoto: interrotta');
   assert.strictEqual(P.streak([r('2026-11-10', 5), r('2026-11-08', 5)], [], '2026-11-10'), 1, 'senza calendario nessun riposo');
 });
+
+test('introduzione: una riga di obiettivo, il resto a parte, senza simboli Markdown', () => {
+  const g = P.parseProgram('# Titolo\n\nObiettivo: capire **Raft** e [Paxos](https://e.com/p)\n\n- Metodo: leggere, poi rifare\n> Ritmo: 3 sessioni\n## Parte 1: a\n### Settimana 1\n- [ ] x\n');
+  assert.strictEqual(g.intro, 'capire Raft e Paxos');
+  assert.deepStrictEqual(g.introMore, ['Metodo: leggere, poi rifare', 'Ritmo: 3 sessioni']);
+  assert.deepStrictEqual([P.parseProgram('').intro, P.parseProgram('').introMore], ['', []]);
+  assert.strictEqual(P.parseProgram('x'.repeat(5000)).intro.length, 300);
+});
+
+test('nome della nota di un passo: niente caratteri vietati, mai vuoto, lunghezza massima', () => {
+  assert.strictEqual(P.noteFileName('Leggere il capitolo 5: «Consenso» (Raft/Paxos)?'), 'Leggere il capitolo 5 «Consenso» (Raft Paxos)');
+  assert.strictEqual(P.noteFileName('../../etc/passwd'), 'etc passwd');
+  assert.strictEqual(P.noteFileName('a\\b|c*d"e<f>g#h^i[j]k'), 'a b c d e f g h i j k');
+  for (const bad of ['', '   ', '...', '/', null, undefined, '\u0000\u0001']) assert.strictEqual(P.noteFileName(bad), 'Passo');
+  const long = P.noteFileName('parola '.repeat(60));
+  assert.ok(long.length <= 80 && !/[. ]$/.test(long));
+  assert.strictEqual(P.noteTemplate('Hash  map\nx'), '# Hash map x\n\n## Cosa ho capito\n\n## Dubbi\n\n## Da rivedere\n');
+});
+
+test('prossimo passo: salta quelli già dichiarati fatti (da verificare)', () => {
+  const prog = P.parseProgram('## Parte 1: A\n### Settimana 1\n- [x] a\n- [ ] b (risorsa: R, 20 min)\n- [ ] c\n');
+  prog.parts[0].weeks[0].steps[1].pending = 20;
+  const s = P.summarize(prog);
+  assert.deepStrictEqual([s.next.text, s.next.index, s.pending, s.done, s.minutesLeft], ['c', 2, 1, 1, 50]);
+});

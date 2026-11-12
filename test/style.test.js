@@ -29,6 +29,13 @@ for (const [name, theme] of [['chiaro', light], ['scuro', dark]]) {
   });
 }
 
+test('bordo dei pulsanti secondari visibile: >= 3:1 su ogni sfondo, chiaro e scuro', () => {
+  for (const theme of [light, dark]) for (const bg of ['bg', 'surface', 'surface-2']) {
+    const r = ratio(theme.edge, theme[bg]);
+    assert.ok(r >= 3, 'edge su ' + bg + ': ' + r.toFixed(2));
+  }
+});
+
 test('nessun colore fuori dalle variabili', () => {
   const body = css.replace(/:root\s*\{[^}]*\}/g, '');
   assert.deepStrictEqual(body.match(/#[0-9a-fA-F]{3,8}\b/g) || [], []);

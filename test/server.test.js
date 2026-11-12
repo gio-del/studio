@@ -52,7 +52,11 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   const { call, login } = await start(t);
   const c = await login();
   const ov = await (await call('GET', '/api/overview', null, c)).json();
-  assert.deepStrictEqual(ov.areas.map((a) => a.area), ['algoritmi', 'sistemi', 'strana']);
+  assert.deepStrictEqual(ov.areas.map((a) => a.area), ['algoritmi', 'sistemi'], 'un file senza una parte con passi (regole, appunti) non è un\'area');
+  assert.strictEqual((await call('GET', '/api/area/settimana', null, c)).status, 404);
+  assert.strictEqual((await call('GET', '/api/area/strana', null, c)).status, 404);
+  assert.strictEqual((await (await call('GET', '/api/cerca?q=regole', null, c)).json()).passi.length, 0);
+  assert.deepStrictEqual((await (await call('GET', '/api/stats', null, c)).json()).areas.map((a) => a.area), ['algoritmi', 'sistemi']);
   assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
   assert.strictEqual(ov.streak, 1);
   const algo = ov.areas[0];
@@ -169,7 +173,7 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   let ov = await (await call('GET', '/api/overview', null, c)).json();
   assert.strictEqual(ov.date, '2026-11-09');
   assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'suggerita' }, 'senza calendario: l\'unica area con passi aperti');
-  assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi', 'Strana']);
+  assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi']);
   assert.strictEqual(ov.areas[0].last, '2026-11-09');
   assert.strictEqual(ov.gapsTotal, 2);
   assert.strictEqual(ov.firstGaps.length, 2);
@@ -393,7 +397,7 @@ test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) =>
   assert.strictEqual(JSON.parse(execFileSync(process.execPath, [bin], { env: { ...process.env, STUDIO_DIR: dir } })).week.length, 10);
 
   // dati sporchi: area non valida con minuti, nome in maiuscolo, durata nel passo, data impossibile, più di cinque aree
-  for (const n of ['a1', 'a2', 'a3', 'a4']) fs.writeFileSync(path.join(dir, 'programma', n + '.md'), '# ' + n + '\n');
+  for (const n of ['a1', 'a2', 'a3', 'a4']) fs.writeFileSync(path.join(dir, 'programma', n + '.md'), '# ' + n + '\n## Parte 1\n### Settimana 1\n- [ ] x\n');
   fs.appendFileSync(path.join(dir, 'progressi.md'), [
     '- 2026-11-04 | Algoritmi | Maiuscolo | ok | nessuna | 10 min', '- 2026-11-05 | constructor | x | ok | 20 min',
     '- 2026-11-06 | sistemi | Video di 20 min | ok | nessuna | 45 min', '- 2026-11-32 | algoritmi | data impossibile | ok | 99 min',
@@ -475,4 +479,61 @@ test('server.js: nessun percorso /api/… dichiarato due volte in api()', () => 
   }
   const dup = [...seen].filter(([, n]) => n > 1).map(([k]) => k);
   assert.deepStrictEqual(dup, []);
+});
+
+test('area: una riga di obiettivo, il resto a parte; prossimo passo dopo quelli da verificare; nota del passo', async (t) => {
+  const dir = makeFixture();
+  const config = readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', HS_OBSIDIAN_VAULT: 'Il mio vault' });
+  const server = createServer({ config, now: () => new Date(2026, 10, 9, 12, 5).getTime() });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'segreto' }) })).headers.get('set-cookie').split(';')[0];
+  const get = async (p) => (await fetch(base + p, { headers: { cookie } })).json();
+  const post = (p, body) => fetch(base + p, { method: 'POST', headers: { cookie, 'content-type': 'application/json' }, body: JSON.stringify(body) });
+
+  const sis = await get('/api/area/sistemi');
+  assert.strictEqual(sis.intro, 'Capire le reti <i>x</i>');
+  assert.deepStrictEqual(sis.introMore, ['Metodo: un capitolo alla volta.', 'Ritmo: due sessioni a settimana.']);
+  assert.deepStrictEqual([sis.next, sis.done, sis.total, sis.pending, sis.minutesLeft], [null, 1, 1, 0, 0]);
+
+  let a = await get('/api/area/algoritmi');
+  assert.strictEqual(a.intro, 'Imparare gli algoritmi per i colloqui. Livello: base.');
+  assert.deepStrictEqual(a.introMore, []);
+  assert.strictEqual(a.minutesLeft, 180 + 60 + 60 + 30);
+  assert.deepStrictEqual([a.next.part, a.next.week, a.next.index], [1, 1, 1]);
+  const note = a.parts[0].weeks[0].steps[1].note;
+  assert.deepStrictEqual(note, { path: 'Studio/Note/algoritmi/Array e stringhe.md', exists: false,
+    openUrl: 'obsidian://open?vault=Il%20mio%20vault&file=Studio%2FNote%2Falgoritmi%2FArray%20e%20stringhe',
+    newUrl: 'obsidian://new?vault=Il%20mio%20vault&file=Studio%2FNote%2Falgoritmi%2FArray%20e%20stringhe&content=' + encodeURIComponent('# Array e stringhe\n\n## Cosa ho capito\n\n## Dubbi\n\n## Da rivedere\n') });
+  const evil = a.parts[0].weeks[0].steps[2].note.path;
+  assert.doesNotMatch(evil.slice('Studio/Note/algoritmi/'.length, -3), /[\\/:*?"<>|#^[\]]/);
+  assert.deepStrictEqual((await get('/api/overview')).areas[0].next.note, note, 'la nota del passo di oggi arriva anche a «Oggi»');
+
+  // la nota c'è (scritta dall'owner in Obsidian): si apre, non si ricrea; non compare due volte tra i documenti del passo
+  fs.mkdirSync(path.join(dir, 'Note', 'algoritmi'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Note', 'algoritmi', 'Array e stringhe.md'), '# Array e stringhe\n\n## Cosa ho capito\nindici\n');
+  fs.writeFileSync(path.join(dir, 'Note', 'algoritmi', 'Altra.md'), 'cita Array e stringhe qui');
+  a = await get('/api/area/algoritmi');
+  assert.strictEqual(a.parts[0].weeks[0].steps[1].note.exists, true);
+  assert.deepStrictEqual(a.parts[0].weeks[0].steps[1].docs.map((d) => d.name), ['algoritmi/Altra.md']);
+  assert.strictEqual((await get('/api/cerca?q=indici')).note.length, 1, 'le note dei passi si trovano con Cerca');
+  assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Note', 'algoritmi')).sort(), ['Altra.md', 'Array e stringhe.md'], 'l\'app non scrive in Note/');
+
+  // dopo «Fatto» il prossimo passo è quello dopo; il passo segnato resta da verificare
+  assert.strictEqual((await post('/api/fatto', { area: 'algoritmi', step: { part: 1, week: 1, index: 1 }, minutes: 45 })).status, 200);
+  a = await get('/api/area/algoritmi');
+  assert.deepStrictEqual([a.next.index, a.pending, a.done], [2, 1, 1]);
+  assert.strictEqual(a.parts[0].weeks[0].steps[1].pending, 45);
+  assert.strictEqual((await get('/api/overview')).areas[0].next.index, 2);
+  // tutti i passi segnati: nessun prossimo passo, ma l'area non risulta completata
+  for (const [week, index] of [[1, 2], [2, 0], [2, 1]]) assert.strictEqual((await post('/api/fatto', { area: 'algoritmi', step: { part: 1, week, index }, minutes: 10 })).status, 200);
+  a = await get('/api/area/algoritmi');
+  assert.deepStrictEqual([a.next, a.pending, a.done, a.total], [null, 4, 1, 5]);
+});
+
+test('senza il nome del vault la nota ha solo il percorso', async (t) => {
+  const { call, login } = await start(t);
+  const a = await (await call('GET', '/api/area/algoritmi', null, await login())).json();
+  assert.deepStrictEqual(a.parts[0].weeks[0].steps[1].note, { path: 'Studio/Note/algoritmi/Array e stringhe.md', exists: false, openUrl: null, newUrl: null });
 });
