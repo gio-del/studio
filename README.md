@@ -1,6 +1,6 @@
 # studio
 
-Il programma di studio nel browser, pensato per il telefono: cosa studiare oggi, il programma per area, le lacune da ripassare, l'andamento (sessioni e verifiche), il calendario della settimana (sotto «Altro»), le risorse e il modulo «Segnala». Si installa nella schermata Home come un'app (tema chiaro e scuro).
+Il programma di studio nel browser, pensato per il telefono: cosa studiare oggi, il programma per area, le lacune da ripassare, l'andamento (sessioni e verifiche), il calendario della settimana e la ricerca nei passi, nelle lacune, nelle note e nelle schede (sotto «Altro», pagina «Cerca»), le risorse e il modulo «Segnala». Si installa nella schermata Home come un'app (tema chiaro e scuro).
 
     STUDIO_DIR=/percorso/dati AUTH_PASSWORD_FILE=/percorso/password PORT=8080 node server.js
 

@@ -302,6 +302,31 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelectorAll(".weeks").length === 2 && document.querySelectorAll("main h1").length === 1', 'statistiche dopo tocchi ripetuti');
   await go('#/leetcode'); await go('#/altro');
 
+  // Cerca: digitare, vedere i risultati (solo testo), toccare un risultato
+  fs.mkdirSync(path.join(dir, 'Note'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'Note', 'Città.md'), '# Città <b>x</b>\nla hash map è utile');
+  await go('#/altro');
+  await waitFor('!!document.querySelector("main a.row[href=\'#/cerca\']")', 'voce Cerca in Altro');
+  await ev('document.querySelector("main a.row[href=\'#/cerca\']").click()');
+  await waitFor('!!document.querySelector("#cerca")', 'pagina Cerca');
+  assert.strictEqual(await current(), 'Altro');
+  await fill('#cerca', 'HASH');
+  await waitFor('document.querySelectorAll("#risultati .group").length === 3', 'risultati');
+  assert.match(await text(), /Hash map/);
+  assert.match(await text(), /Città <b>x<\/b>/);
+  assert.strictEqual(await ev('document.querySelectorAll("main b, main img, main script").length'), 0);
+  assert.strictEqual(await ev('location.hash'), '#/cerca?q=HASH');
+  await noOverflow('cerca'); await targets('cerca');
+  await fill('#cerca', 'zzzzqq');
+  await waitFor('!!document.querySelector("#risultati .empty")', 'nessun risultato');
+  await fill('#cerca', 'hash');
+  await waitFor('document.querySelectorAll("#risultati .group").length === 3', 'risultati di nuovo');
+  await ev('document.querySelector("#risultati a.row[href^=\'#/area/\']").click()');
+  await waitFor('document.querySelector("main h1") && document.querySelector("main h1").textContent !== "Cerca" && location.hash.startsWith("#/area/algoritmi")', 'pagina area dal risultato');
+  await go('#/cerca?q=hash');
+  await waitFor('document.querySelector("#cerca") && document.querySelector("#cerca").value === "hash" && document.querySelectorAll("#risultati .group").length === 3', 'indirizzo proprio con q');
+  await go('#/altro');
+
   // Altro: Esci riporta al login e nasconde il menu
   await go('#/altro');
   await waitFor('!!document.querySelector("#esci")', 'altro');

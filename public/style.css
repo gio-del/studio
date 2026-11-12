@@ -217,3 +217,9 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .cal-time { font-variant-numeric: tabular-nums; font-weight: 650; }
 .cal-day p { margin: 0; }
 .entry .top .state { width: 20px; height: 20px; color: var(--primary); }
+
+/* Cerca */
+.search { margin: 0 0 var(--s3); }
+.group h2 { margin-top: 0; }
+.group .row { padding-left: 0; padding-right: 0; }
+.row .title { overflow-wrap: anywhere; }

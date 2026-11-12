@@ -414,3 +414,33 @@ test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) =>
   assert.strictEqual(miss.status, 1);
   assert.strictEqual(miss.stdout, '');
 });
+
+test('ricerca: gruppi, accenti, minimo e massimo, sola lettura', async (t) => {
+  const { call, login, dir } = await start(t);
+  assert.strictEqual((await call('GET', '/api/cerca?q=hash')).status, 401);
+  const cookie = await login();
+  const get = (q) => call('GET', `/api/cerca?q=${encodeURIComponent(q)}`, null, cookie);
+  assert.strictEqual((await get('a')).status, 400);
+  assert.strictEqual((await get(' a ')).status, 400);
+  assert.strictEqual((await get('x'.repeat(81))).status, 400);
+  assert.strictEqual((await call('GET', '/api/cerca', null, cookie)).status, 400);
+  assert.strictEqual((await get('--')).status, 400);
+  fs.mkdirSync(path.join(dir, 'Note')); fs.mkdirSync(path.join(dir, 'Schede'));
+  fs.writeFileSync(path.join(dir, 'Note', 'Città.md'), '# Città <b>x</b>\nla HASH map è utile');
+  fs.writeFileSync(path.join(dir, 'Schede', '2026-11-06 algoritmi - Hash map.md'), '# Scheda\nconcetti');
+  const before = [fs.readdirSync(path.join(dir, 'Note')), fs.readdirSync(path.join(dir, 'Schede')), fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8')];
+  const r = await (await get('HASH Map')).json();
+  assert.deepStrictEqual(r.passi.map((p) => [p.area, p.part, p.week, p.text]), [['algoritmi', 1, 2, 'Hash map']]);
+  assert.deepStrictEqual(r.lacune.map((g) => g.text), ['hash map e collisioni']);
+  assert.deepStrictEqual(r.note.map((n) => n.name), ['Città.md']);
+  assert.deepStrictEqual(r.schede.map((n) => n.name), ['2026-11-06 algoritmi - Hash map.md']);
+  assert.strictEqual(r.note[0].title, 'Città <b>x</b>');
+  assert.deepStrictEqual((await (await get('citta')).json()).note.map((n) => n.name), ['Città.md']);
+  const none = await (await get('zzzzqq')).json();
+  assert.deepStrictEqual(none, { passi: [], lacune: [], note: [], schede: [] });
+  // lacuna chiusa non compare; massimo 30 per gruppo
+  assert.deepStrictEqual((await (await get('notazione')).json()).lacune, []);
+  for (let i = 0; i < 40; i++) fs.writeFileSync(path.join(dir, 'Note', `n${i}.md`), 'parola comune');
+  assert.strictEqual((await (await get('comune')).json()).note.length, 30);
+  assert.deepStrictEqual([fs.readdirSync(path.join(dir, 'Schede')), fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8')], [before[1], before[2]]);
+});
