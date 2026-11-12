@@ -133,9 +133,9 @@ function outcome(text) {
 }
 
 // Modulo «Segnala»: un tocco apre/chiude, l'invio disabilita il pulsante finché non risponde il server.
-function reportBox(area, step) {
+function reportBox(area, step, label) {
   const holder = h('div');
-  const open = h('button', { class: 'btn quiet', type: 'button', 'aria-expanded': 'false', 'data-act': 'segnala' }, icon('segnala'), 'Segnala un problema');
+  const open = h('button', { class: 'btn quiet', type: 'button', 'aria-expanded': 'false', 'data-act': 'segnala' }, icon('segnala'), label || 'Segnala un problema');
   let form = null;
   open.addEventListener('click', () => {
     if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
@@ -210,7 +210,7 @@ function noteBtn(note) {
   const key = `nota:${note.path}`;
   const made = () => { try { return Date.now() - Number(localStorage.getItem(key) || 0) < NOTE_WAIT; } catch { return false; } };
   const label = h('span');
-  const a = h('a', { class: 'btn ghost', href: create, 'data-act': 'nota' }, icon('nota'), label, icon('fuori'));
+  const a = h('a', { class: 'btn ghost', href: create, 'data-act': 'nota' }, icon('nota'), label, icon('fuori', 'out'));
   const sync = () => { const there = note.exists || made(); a.href = there ? open : create; label.textContent = there ? 'Apri la nota' : 'Nuova nota'; };
   a.addEventListener('click', () => { try { localStorage.setItem(key, String(Date.now())); } catch { /* senza memoria resta «Nuova nota» */ } setTimeout(sync, 500); });
   sync();
@@ -222,12 +222,12 @@ function tutorBtn(session, context) {
   if (!session || (!session.url && !session.name)) return { btn: null, holder: null };
   const copy = () => { try { navigator.clipboard.writeText(context).then(() => toast('Passo copiato: incollalo al tutor'), () => {}); } catch { /* senza appunti si apre lo stesso */ } };
   if (isHttp(session.url)) {
-    const a = h('a', { class: 'btn ghost', href: session.url, rel: 'noopener noreferrer', target: '_blank', 'data-act': 'tutor' }, icon('tutor'), 'Chiedi al tutor', icon('fuori'));
+    const a = h('a', { class: 'btn ghost', href: session.url, rel: 'noopener noreferrer', target: '_blank', 'data-act': 'tutor' }, icon('tutor'), h('span', null, 'Chiedi al tutor'), icon('fuori', 'out'));
     a.addEventListener('click', copy);
     return { btn: a, holder: null };
   }
   const holder = h('div');
-  const b = h('button', { class: 'btn ghost', type: 'button', 'aria-expanded': 'false', 'data-act': 'tutor' }, icon('tutor'), 'Chiedi al tutor');
+  const b = h('button', { class: 'btn ghost', type: 'button', 'aria-expanded': 'false', 'data-act': 'tutor' }, icon('tutor'), h('span', null, 'Chiedi al tutor'));
   let tip = null;
   b.addEventListener('click', () => {
     if (tip) { tip.remove(); tip = null; b.setAttribute('aria-expanded', 'false'); return; }
@@ -257,10 +257,10 @@ function stepBody(area, title, ref, s, session, onDone) {
       (s.links || []).map((l) => extBtn(l.title ? `Apri: ${l.title}` : 'Apri un’altra risorsa', l.url, 'ghost')), fb ? fb.open : null),
     fb ? fb.holder : null,
     nb.btn || tb.btn ? h('div', { class: 'side-actions' }, nb.btn, tb.btn) : null, nb.hint, tb.holder,
-    h('div', { class: 'low-actions' }, rb.open, h('a', { class: 'btn quiet', href: '#/come-funziona' }, icon('aiuto'), 'Come funziona')),
+    h('div', { class: 'low-actions' }, rb.open, h('a', { class: 'btn quiet help', href: '#/come-funziona', 'aria-label': 'Come funziona', title: 'Come funziona' }, icon('aiuto'))),
     rb.holder);
 }
-const meta = (...parts) => parts.filter(Boolean).join(' · ');
+const meta = (...parts) => parts.filter(Boolean).map((p) => String(p).replace(/^(\S+) (\S+)$/, '$1\u00a0$2')).join(' · ');
 
 function tutorLine(session) {
   if (!session || (!session.url && !session.name)) return null;
@@ -430,7 +430,7 @@ async function pageArea(main, name) {
   if (a.resources && a.resources.length) {
     main.append(h('details', { class: 'fold' }, h('summary', null, h('span', { class: 'grow' }, 'Risorse dell’area'), icon('giu', 'chev')), h('div', { class: 'body prose' }, listOf(a.resources))));
   }
-  const rb = reportBox(a.area);
+  const rb = reportBox(a.area, undefined, 'Segnala un problema in quest’area');
   main.append(h('div', { class: 'low-actions', id: 'segnala-area' }, rb.open), rb.holder);
 }
 

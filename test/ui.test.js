@@ -124,7 +124,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.match(area, /<b>strana<\/b>/);
   assert.strictEqual(await ev('document.querySelectorAll("main script, main b").length'), 0);
   assert.strictEqual(await ev('document.querySelector("#adesso .step").textContent'), 'Array e stringhe');
-  assert.strictEqual(await ev('document.querySelector("#adesso .where").textContent'), 'Parte 1: Basi · settimana 1 · 3 h');
+  assert.strictEqual(await ev('document.querySelector("#adesso .where").textContent'), 'Parte 1: Basi · settimana\u00a01 · 3\u00a0h');
   assert.strictEqual(await ev('document.querySelector("#adesso .main-actions a.btn").href'), 'https://example.com/libro', 'la risorsa si apre dalla cima, senza cercare il passo');
   assert.match(await ev('document.querySelector(".progress").textContent'), /^1 di 5 passi fatti · restano circa \d+ h/);
   assert.strictEqual(await ev('document.querySelector(".lead").textContent'), 'Imparare gli algoritmi per i colloqui. Livello: base.');
@@ -168,6 +168,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor(nota + '.textContent === "Apri la nota"', 'la nota appena creata si riapre, non si ricrea');
   assert.match(await ev(nota + '.getAttribute("href")'), /^obsidian:\/\/open\?vault=Il%20mio%20vault&file=Studio%2FNote%2Falgoritmi%2FArray%20e%20stringhe$/);
   assert.strictEqual(fs.existsSync(path.join(dir, 'Note')), false, 'l\'app non scrive in Note/');
+  // nota e tutor: una riga ciascuno, mai spezzati
+  assert.strictEqual(await ev('[...document.querySelectorAll("#adesso .side-actions .btn")].every((b) => b.getBoundingClientRect().height < 50)'), true);
   // Tutor: stesso pulsante, verso la sessione
   assert.strictEqual(await ev('document.querySelector("#adesso [data-act=tutor]").href'), 'https://example.com/sessione');
   assert.strictEqual(await ev('!!document.querySelector("#adesso a[href=\\"#/come-funziona\\"]")'), true, 'dal passo si arriva a «Come funziona»');

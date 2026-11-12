@@ -238,9 +238,12 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .main-actions .btn { width: 100%; min-height: 48px; }
 .btn.strong { border-color: var(--edge); border-width: 1.5px; }
 .btn.ghost { border-color: var(--edge); }
-.side-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); gap: var(--s2); margin-top: var(--s3); }
-.side-actions .btn { padding: 0 var(--s3); }
-.low-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s1) var(--s3); margin-top: var(--s2); }
+.side-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--s2); margin-top: var(--s3); }
+.side-actions .btn { justify-content: flex-start; white-space: nowrap; }
+.side-actions .btn .out { margin-left: auto; color: var(--muted); }
+.low-actions { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-top: var(--s2); }
+.btn.help { min-width: 44px; padding: 0; }
+.btn.help .ic { width: 22px; height: 22px; }
 .more-link { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; margin-top: var(--s2); font-weight: 650; text-decoration: none; }
 .progress { margin: var(--s4) 0 var(--s3); }
 .progress .bar { margin: var(--s1) 0 var(--s2); }
