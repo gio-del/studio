@@ -463,3 +463,14 @@ test('ricerca: gruppi, accenti, minimo e massimo, sola lettura', async (t) => {
   assert.strictEqual((await (await get('comune')).json()).note.length, 30);
   assert.deepStrictEqual([fs.readdirSync(path.join(dir, 'Schede')), fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8')], [before[1], before[2]]);
 });
+
+test('server.js: nessun percorso /api/… dichiarato due volte in api()', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+  const seen = new Map();
+  for (const m of src.matchAll(/(?:req\.method === '(\w+)' && )?p === '(\/api\/[^']*)'/g)) {
+    const key = `${m[1] || 'GET'} ${m[2]}`;
+    seen.set(key, (seen.get(key) || 0) + 1);
+  }
+  const dup = [...seen].filter(([, n]) => n > 1).map(([k]) => k);
+  assert.deepStrictEqual(dup, []);
+});
