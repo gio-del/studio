@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 
-const ALGO = `Imparare gli algoritmi per i colloqui. Livello: base.
+const ALGO = `Obiettivo: imparare gli algoritmi per i colloqui da sviluppatore: complessità, array e stringhe, hash map, alberi e grafi, programmazione dinamica, con esercizi a tempo e spiegazione a voce della soluzione. Livello di partenza: corso di algoritmi all'università, quindi la notazione O grande e le strutture di base sono già viste ma vanno rinfrescate prima di passare ai problemi da colloquio.
 
 ## Parte 1: Basi
 Obiettivo: leggere la complessità di un ciclo
