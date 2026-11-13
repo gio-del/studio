@@ -6,4 +6,4 @@ const { createData } = require('../lib/data');
 
 const dir = process.env.STUDIO_DIR;
 if (!dir) { console.error('STUDIO_DIR mancante'); process.exit(2); }
-createData(dir).riassunto().then((r) => console.log(JSON.stringify(r)), (e) => { console.error(`dati di studio non leggibili: ${e.code || 'errore'}`); process.exit(1); });
+createData(dir, Date.now, { goalMinutes: require('../lib/parser').parseGoal(process.env) }).riassunto().then((r) => console.log(JSON.stringify(r)), (e) => { console.error(`dati di studio non leggibili: ${e.code || 'errore'}`); process.exit(1); });

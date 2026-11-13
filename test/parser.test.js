@@ -206,3 +206,11 @@ test('prossimo passo: salta quelli già dichiarati fatti (da verificare)', () =>
   const s = P.summarize(prog);
   assert.deepStrictEqual([s.next.text, s.next.index, s.pending, s.done, s.minutesLeft], ['c', 2, 1, 1, 50]);
 });
+
+test('parseGoal: ore da STUDIO_GOAL_HOURS, default 420 se assente o non valido', () => {
+  assert.strictEqual(P.parseGoal({ STUDIO_GOAL_HOURS: '5' }), 300);
+  assert.strictEqual(P.parseGoal({ STUDIO_GOAL_HOURS: '7.5' }), 450);
+  assert.strictEqual(P.parseGoal({ STUDIO_GOAL_HOURS: '40' }), 2400);
+  for (const v of ['abc', '0', '99', '41', '2.3', '-3', '', '1e1']) assert.strictEqual(P.parseGoal({ STUDIO_GOAL_HOURS: v }), 420, v);
+  assert.strictEqual(P.parseGoal({}), 420);
+});
