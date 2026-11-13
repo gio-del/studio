@@ -353,8 +353,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelectorAll("main .open section.card").length === 2', 'lacuna di nuovo da ripassare');
   assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter((l) => /\| ripassata \|/.test(l)).length, 0);
   assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '2');
-  await ev('document.querySelector("main .open section.card button").click()');
-  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1', 'lacuna di nuovo in attesa');
+  await ev('[...document.querySelectorAll("main .open section.card")].find((c) => /ricorsione/.test(c.textContent)).querySelector("button").click()');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && /ricorsione/.test(document.querySelector("main .waiting section.card").textContent)', 'lacuna di nuovo in attesa');
 
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
