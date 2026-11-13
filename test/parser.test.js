@@ -214,3 +214,19 @@ test('parseGoal: ore da STUDIO_GOAL_HOURS, default 420 se assente o non valido',
   for (const v of ['abc', '0', '99', '41', '2.3', '-3', '', '1e1']) assert.strictEqual(P.parseGoal({ STUDIO_GOAL_HOURS: v }), 420, v);
   assert.strictEqual(P.parseGoal({}), 420);
 });
+
+test('fattoKey e isFattoOf: minuti di 1, 2 e 3 cifre, testo con «min»', () => {
+  const step = 'Leggi 20 min di teoria';
+  const key = P.fattoKey(1, 2, step);
+  assert.strictEqual(key, '[passo: Parte 1, Settimana 2, Leggi 20 min di teoria]');
+  for (const m of [5, 45, 120]) {
+    const r = { type: 'fatto', area: 'a', text: P.fattoText(1, 2, step, m) };
+    assert.ok(P.isFattoOf(r, 'a', key), `minuti ${m}`);
+  }
+  const r = { type: 'fatto', area: 'a', text: P.fattoText(1, 2, step, 45) };
+  assert.ok(!P.isFattoOf(r, 'b', key));
+  assert.ok(!P.isFattoOf({ ...r, type: 'ripassata' }, 'a', key));
+  assert.ok(!P.isFattoOf({ ...r, text: P.fattoText(1, 3, step, 45) }, 'a', key));
+  assert.ok(!P.isFattoOf(r, 'a', P.fattoKey(1, 2, 'Leggi 20')));
+  assert.ok(!P.isFattoOf(undefined, 'a', key));
+});
