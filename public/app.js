@@ -378,8 +378,7 @@ function stepItem(a, p, w, s, i, isNext) {
 async function pageArea(main, name) {
   const a = await api(`/api/area/${encodeURIComponent(name)}`);
   const nx = a.next;
-  main.append(h('a', { class: 'back', href: '#/programma' }, icon('indietro'), 'Programma'), h('h1', null, a.title),
-    a.intro ? h('p', { class: 'lead' }, a.intro) : null);
+  main.append(h('a', { class: 'back', href: '#/programma' }, icon('indietro'), 'Programma'), h('h1', null, a.title));
   if (nx) {
     const s = a.parts.find((p) => p.n === nx.part).weeks.find((w) => w.n === nx.week).steps[nx.index];
     const pt = a.parts.find((p) => p.n === nx.part);
@@ -396,9 +395,10 @@ async function pageArea(main, name) {
     h('div', { class: 'small' }, h('strong', null, `${a.done} di ${a.total} passi fatti`), a.done < a.total && a.minutesLeft ? ` · restano circa ${hours(a.minutesLeft)}` : ''),
     bar(a.done, a.total),
     a.gaps ? h('div', { class: 'chips' }, chip(plural(a.gaps, 'lacuna aperta', 'lacune aperte'), 'gap')) : null));
-  if (a.introMore && a.introMore.length) {
-    main.append(h('details', { class: 'fold' }, h('summary', null, h('span', { class: 'grow' }, 'Metodo e ritmo'), icon('giu', 'chev')),
-      h('div', { class: 'body' }, a.introMore.map((l) => h('p', { class: 'small' }, l)))));
+  const about = [a.intro, ...(a.introMore || [])].filter(Boolean);
+  if (about.length) {
+    main.append(h('details', { class: 'fold', id: 'obiettivo' }, h('summary', null, h('span', { class: 'grow' }, 'Obiettivo e metodo'), icon('giu', 'chev')),
+      h('div', { class: 'body' }, about.map((l) => h('p', { class: 'small' }, l)))));
   }
   main.append(h('h2', null, 'Il programma'));
   for (const p of a.parts) {

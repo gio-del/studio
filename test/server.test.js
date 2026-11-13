@@ -498,7 +498,7 @@ test('area: una riga di obiettivo, il resto a parte; prossimo passo dopo quelli 
   assert.deepStrictEqual([sis.next, sis.done, sis.total, sis.pending, sis.minutesLeft], [null, 1, 1, 0, 0]);
 
   let a = await get('/api/area/algoritmi');
-  assert.strictEqual(a.intro, 'Imparare gli algoritmi per i colloqui. Livello: base.');
+  assert.match(a.intro, /^Obiettivo: imparare gli algoritmi.*problemi da colloquio\.$/, 'intera, senza tagli');
   assert.deepStrictEqual(a.introMore, []);
   assert.strictEqual(a.minutesLeft, 180 + 60 + 60 + 30);
   assert.deepStrictEqual([a.next.part, a.next.week, a.next.index], [1, 1, 1]);

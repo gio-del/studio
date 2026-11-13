@@ -180,12 +180,14 @@ test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del 
   assert.strictEqual(P.streak([r('2026-11-10', 5), r('2026-11-08', 5)], [], '2026-11-10'), 1, 'senza calendario nessun riposo');
 });
 
-test('introduzione: una riga di obiettivo, il resto a parte, senza simboli Markdown', () => {
+test('introduzione: righe ripulite dai simboli Markdown, mai tagliate a metà parola', () => {
   const g = P.parseProgram('# Titolo\n\nObiettivo: capire **Raft** e [Paxos](https://e.com/p)\n\n- Metodo: leggere, poi rifare\n> Ritmo: 3 sessioni\n## Parte 1: a\n### Settimana 1\n- [ ] x\n');
-  assert.strictEqual(g.intro, 'capire Raft e Paxos');
+  assert.strictEqual(g.intro, 'Obiettivo: capire Raft e Paxos');
   assert.deepStrictEqual(g.introMore, ['Metodo: leggere, poi rifare', 'Ritmo: 3 sessioni']);
   assert.deepStrictEqual([P.parseProgram('').intro, P.parseProgram('').introMore], ['', []]);
-  assert.strictEqual(P.parseProgram('x'.repeat(5000)).intro.length, 300);
+  const lunga = 'Obiettivo: ' + 'parola '.repeat(60).trim();
+  assert.strictEqual(P.parseProgram(lunga + '\n## Parte 1: a\n').intro, lunga);
+  assert.strictEqual(P.parseProgram('x'.repeat(5000)).intro.length, 2000);
 });
 
 test('nome della nota di un passo: niente caratteri vietati, mai vuoto, lunghezza massima', () => {

@@ -127,7 +127,12 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("#adesso .where").textContent'), 'Parte 1: Basi · settimana\u00a01 · 3\u00a0h');
   assert.strictEqual(await ev('document.querySelector("#adesso .main-actions a.btn").href'), 'https://example.com/libro', 'la risorsa si apre dalla cima, senza cercare il passo');
   assert.match(await ev('document.querySelector(".progress").textContent'), /^1 di 5 passi fatti · restano circa \d+ h/);
-  assert.strictEqual(await ev('document.querySelector(".lead").textContent'), 'Imparare gli algoritmi per i colloqui. Livello: base.');
+  // nessuna descrizione sotto il titolo: il prossimo passo e il suo primo pulsante stanno nella prima schermata, anche con un'introduzione lunga
+  assert.strictEqual(await ev('document.querySelectorAll("main .lead").length'), 0);
+  assert.strictEqual(await ev('document.querySelector("main h1").nextElementSibling.id'), 'adesso');
+  assert.strictEqual(await ev('document.querySelector("#adesso .main-actions .btn").getBoundingClientRect().bottom < innerHeight - 64'), true, 'il pulsante del passo è nella prima schermata');
+  assert.strictEqual(await ev('document.querySelector("#obiettivo").open'), false, 'obiettivo e metodo chiusi');
+  assert.match(await ev('document.querySelector("#obiettivo .body").textContent'), /^Obiettivo: imparare gli algoritmi[\s\S]*problemi da colloquio\.$/, 'il testo intero, non tagliato');
   assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part")].map((d) => d.open)'), [true, false], 'solo la parte in corso è aperta');
   assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part > summary .count")].map((e) => e.textContent)'), ['1/5', '0/0'], 'contatori tutti nella stessa forma');
   assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.week")].map((d) => d.open)'), [true, false], 'solo la settimana in corso è aperta');
@@ -236,11 +241,11 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/area/sistemi');
   await waitFor('!!document.querySelector("details.fold")', 'area sistemi');
   assert.match(await text(), /Area completata/);
-  assert.strictEqual(await ev('document.querySelector(".lead").textContent'), 'Capire le reti <i>x</i>');
-  assert.strictEqual(await ev('document.querySelector("details.fold").open'), false, 'metodo e ritmo chiusi');
+  assert.strictEqual(await ev('document.querySelectorAll("main .lead").length'), 0);
+  assert.strictEqual(await ev('document.querySelector("details.fold").open'), false, 'obiettivo e metodo chiusi');
   await ev('(() => { const s = document.querySelector("details.fold > summary"); s.click(); s.click(); s.click(); return true; })()');
   assert.strictEqual(await ev('document.querySelector("details.fold").open'), true);
-  assert.match(await ev('document.querySelector("details.fold .body").innerText'), /Metodo: un capitolo alla volta\.\s+Ritmo: due sessioni a settimana\./);
+  assert.match(await ev('document.querySelector("details.fold .body").innerText'), /Capire le reti <i>x<\/i>\s+Metodo: un capitolo alla volta\.\s+Ritmo: due sessioni a settimana\./);
   assert.strictEqual(await ev('document.querySelectorAll("main i, main script").length'), 0);
   assert.deepStrictEqual(await ev('[...document.querySelectorAll("details.part")].map((d) => d.open)'), [false], 'parte fatta: una riga');
   await noOverflow('area completata'); await targets('area completata');
