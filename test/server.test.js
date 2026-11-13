@@ -537,3 +537,18 @@ test('senza il nome del vault la nota ha solo il percorso', async (t) => {
   const a = await (await call('GET', '/api/area/algoritmi', null, await login())).json();
   assert.deepStrictEqual(a.parts[0].weeks[0].steps[1].note, { path: 'Studio/Note/algoritmi/Array e stringhe.md', exists: false, openUrl: null, newUrl: null });
 });
+
+test('STUDIO_GOAL_HOURS: Oggi, Statistiche e riassunto usano il valore; non valido = 420', async (t) => {
+  for (const [v, want] of [['5', 300], ['abc', 420], ['99', 420], [undefined, 420]]) {
+    const dir = makeFixture();
+    const env = { STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0' };
+    if (v !== undefined) env.STUDIO_GOAL_HOURS = v;
+    const data = require('../lib/data').createData(dir, () => new Date(2026, 10, 9, 12, 5).getTime(), { goalMinutes: readConfig(env).goalMinutes });
+    t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+    assert.strictEqual((await data.overview()).week.goalMinutes, want);
+    assert.strictEqual((await data.stats()).goalMinutes, want);
+    assert.strictEqual((await data.riassunto()).goalMinutes, want);
+  }
+  const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  assert.ok(!/7 ore|7 h\b/.test(src), 'nessun «7 ore» fisso nell\'interfaccia');
+});
