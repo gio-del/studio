@@ -230,7 +230,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   // Annulla: tocchi ripetuti, la riga sparisce e il passo torna com'era (la cima mostra di nuovo quel passo); poi si rifà con 45
   const undo = fatto + '.querySelector("[data-act=annulla]")';
   assert.strictEqual(await ev('!!' + undo), true, 'Annulla sul passo da verificare');
-  await ev(fatto + '.closest("details") && (' + fatto + '.closest("details").open = true)');
+  await ev('(() => { const b = ' + fatto + '.querySelector("button.step"); if (b.getAttribute("aria-expanded") !== "true") b.click(); })()');
+  console.log('DBG', await ev('(() => { const b = ' + undo + '; const r = b.getBoundingClientRect(); return JSON.stringify([r.width, r.height, b.outerHTML, b.parentElement.className, b.closest("details").outerHTML.slice(0,80)]); })()'));
   assert.strictEqual(await ev('(() => { const r = ' + undo + '.getBoundingClientRect(); return r.height >= 43.5 && r.width >= 43.5; })()'), true, 'bersaglio >= 44px');
   await ev('(() => { const b = ' + undo + '; b.click(); b.click(); b.click(); })()');
   await waitFor('/^Array e stringhe/.test(document.querySelector("#adesso .step").textContent)', 'la cima torna al passo annullato');
