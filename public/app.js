@@ -359,6 +359,13 @@ async function pageOggi(main) {
     main.append(h('section', { class: 'card hero' }, h('div', { class: 'label' }, icon('fatto'), wait ? 'Tutto fatto, da verificare' : 'Programma completato'),
       h('p', { class: 'muted' }, wait ? 'Hai segnato tutti i passi: il tutor li verifica alla prossima sessione.' : 'Tutti i passi sono fatti. Il tutor può aggiungere una parte nuova.'), tutorLine(o.session)));
   }
+  for (const v of o.verifyDue || []) {
+    const { btn, holder } = tutorBtn(o.session, `Studio, ${v.title}, parte ${v.part}: verifica finale.${v.verification ? ` ${v.verification}` : ''}\nChiedo la verifica finale della parte.`);
+    main.append(h('section', { class: 'card verify', 'aria-label': 'Verifica finale' },
+      h('div', { class: 'head' }, icon('fatto'), `Parte ${v.part} pronta per la verifica finale · ${v.title}`),
+      v.verification ? h('p', { class: 'small' }, v.verification) : null,
+      btn ? h('div', { class: 'actions' }, btn) : null, holder));
+  }
   const fr = firstRun();
   if (fr) main.querySelector('h1').after(fr);
   const later = o.later.map((l) => by[l.area]).filter(Boolean);

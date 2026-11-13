@@ -93,6 +93,14 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('!!document.querySelector("section.hero [data-act=fatto]") && !!document.querySelector("section.hero [data-act=nota]") && !!document.querySelector("section.hero [data-act=segnala]")'), true);
   assert.strictEqual(await ev('document.querySelectorAll("section.hero .main-actions .btn").length'), 2, 'risorsa e Fatto, uno sotto l\'altro');
   assert.strictEqual(await ev('(() => { const [a, b] = document.querySelectorAll("section.hero .main-actions .btn"); return b.getBoundingClientRect().top >= a.getBoundingClientRect().bottom + 8; })()'), true, 'Fatto non è attaccato ad «Apri la risorsa»');
+  // parte tutta fatta senza verifica `fine`: una riga sotto il prossimo passo, testo come testo, tasto del tutor
+  assert.strictEqual(await ev('document.querySelectorAll("section.verify").length'), 1, 'solo sistemi: algoritmi ha già la verifica fine e passi aperti');
+  assert.match(oggi, /Parte 1 pronta per la verifica finale · Sistemi/);
+  assert.match(oggi, /spiegare il percorso di un pacchetto <b>a voce<\/b>/, 'testo, non HTML');
+  assert.strictEqual(await ev('document.querySelectorAll("section.verify b").length'), 0);
+  assert.strictEqual(await ev('document.querySelector("section.verify [data-act=tutor]").href'), 'https://example.com/sessione');
+  assert.strictEqual(await ev('document.querySelector("section.verify [data-act=tutor]").getBoundingClientRect().height >= 43.5'), true);
+  await noOverflow('verifica finale su Oggi');
   // prima volta: l'invito a «Come funziona» c'è, si toglie con un tocco (anche ripetuto) e non torna
   assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 1);
   await ev('(() => { const b = document.querySelector("#prima-volta button"); b.click(); b.click(); b.click(); return true; })()');

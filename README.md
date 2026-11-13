@@ -1,6 +1,6 @@
 # studio
 
-Il programma di studio nel browser, pensato per il telefono: cosa studiare oggi (con le ore della settimana contro l'obiettivo e i giorni di studio di fila), il programma per area, le lacune da ripassare, l'andamento (sessioni e verifiche), il calendario della settimana e la ricerca nei passi, nelle lacune, nelle note e nelle schede (sotto «Altro», pagina «Cerca»), le risorse, il modulo «Segnala un problema» e la pagina «Come funziona». Ogni passo ha le stesse azioni: aprire la risorsa, «Fatto» con i minuti, la nota del passo in Obsidian, la domanda al tutor. Si installa nella schermata Home come un'app (tema chiaro e scuro).
+Il programma di studio nel browser, pensato per il telefono: cosa studiare oggi (con le ore della settimana contro l'obiettivo e i giorni di studio di fila), il programma per area, le lacune da ripassare, l'andamento (sessioni e verifiche), il calendario della settimana e la ricerca nei passi, nelle lacune, nelle note e nelle schede (sotto «Altro», pagina «Cerca»), le risorse, il modulo «Segnala un problema» e la pagina «Come funziona». Ogni passo ha le stesse azioni: aprire la risorsa, «Fatto» con i minuti, la nota del passo in Obsidian, la domanda al tutor. «Oggi» avvisa quando una parte è pronta per la verifica finale. Si installa nella schermata Home come un'app (tema chiaro e scuro).
 
     STUDIO_DIR=/percorso/dati AUTH_PASSWORD_FILE=/percorso/password PORT=8080 node server.js
 

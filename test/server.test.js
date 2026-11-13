@@ -57,6 +57,8 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   assert.strictEqual((await call('GET', '/api/area/strana', null, c)).status, 404);
   assert.strictEqual((await (await call('GET', '/api/cerca?q=regole', null, c)).json()).passi.length, 0);
   assert.deepStrictEqual((await (await call('GET', '/api/stats', null, c)).json()).areas.map((a) => a.area), ['algoritmi', 'sistemi']);
+  assert.deepStrictEqual(ov.verifyDue, [{ area: 'sistemi', title: 'Sistemi', part: 1, partTitle: 'Rete', verification: 'spiegare il percorso di un pacchetto a voce' }],
+    'parte tutta fatta senza verifica fine: sistemi sì; algoritmi ha passi aperti e la sua verifica fine');
   assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
   assert.strictEqual(ov.streak, 1);
   const algo = ov.areas[0];
@@ -165,6 +167,15 @@ test('sessione del tutor: variabili facoltative, solo URL http(s)', async (t) =>
   const { call, login } = await start(t);
   const fb = await (await call('GET', '/api/feedback', null, await login())).json();
   assert.deepStrictEqual(fb.session, { url: null, name: null });
+});
+
+test('verifica finale: sparisce con la riga fine, o con passi ancora aperti', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const due = async () => (await (await call('GET', '/api/overview', null, c)).json()).verifyDue.map((v) => `${v.area}:${v.part}`);
+  assert.deepStrictEqual(await due(), ['sistemi:1']);
+  fs.appendFileSync(path.join(dir, 'verifiche.md'), '\n## 2026-11-09 | Sistemi | Parte 1 | fine parte\nEsito: superata\n');
+  assert.deepStrictEqual(await due(), [], 'con la verifica fine (anche col titolo dell\'area) non compare');
 });
 
 test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manifest e icone', async (t) => {
