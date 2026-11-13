@@ -232,6 +232,52 @@ test('fatto: richieste in parallelo sullo stesso passo scrivono una riga; testo 
   assert.match(lines[0], /\| fatto \| \[passo: Parte 1, Settimana 1, Passo <script>alert\(1\)<\/script>\] 20 min$/);
 });
 
+test('annulla: toglie solo la riga fatto o ripassata, gone se non c\'è più, le altre righe identiche', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const f = path.join(dir, 'segnalazioni.md');
+  const step = { part: 1, week: 1, index: 1 };
+  const g = { area: 'algoritmi', type: 'ripassata', text: 'hash map e collisioni' };
+  const altre = '- 2026-11-08 10:00 | algoritmi | manca | una cosa  con spazi\nriga libera strana  \n- 2026-11-08 10:01 | algoritmi | rifare | [passo: Parte 1, Settimana 1, Array e stringhe] 45 min\n';
+  fs.writeFileSync(f, altre);
+  await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 45 }, c);
+  await call('POST', '/api/segnala', g, c);
+  assert.strictEqual(fs.readFileSync(f, 'utf8').split('\n').filter(Boolean).length, 5);
+  const r = await call('POST', '/api/annulla', { area: 'algoritmi', type: 'fatto', step }, c);
+  assert.deepStrictEqual(await r.json(), { ok: true });
+  const r2 = await call('POST', '/api/annulla', { area: 'algoritmi', type: 'ripassata', text: g.text }, c);
+  assert.deepStrictEqual(await r2.json(), { ok: true });
+  assert.strictEqual(fs.readFileSync(f, 'utf8'), altre, 'le altre righe restano identiche byte per byte');
+  assert.deepStrictEqual(await (await call('POST', '/api/annulla', { area: 'algoritmi', type: 'fatto', step }, c)).json(), { ok: true, gone: true });
+  assert.deepStrictEqual(await (await call('POST', '/api/annulla', { area: 'algoritmi', type: 'ripassata', text: g.text }, c)).json(), { ok: true, gone: true });
+  assert.strictEqual(fs.readFileSync(f, 'utf8'), altre);
+  // non tocca righe di altro tipo, anche se il testo coincide
+  for (const type of ['manca', 'rifare', 'risorsa', 'altro']) assert.strictEqual((await call('POST', '/api/annulla', { area: 'algoritmi', type, step }, c)).status, 400);
+  for (const b of [{ area: 'nonesiste', type: 'fatto', step }, { area: 'algoritmi', type: 'fatto' }, { area: 'algoritmi', type: 'fatto', step: { part: 9, week: 9, index: 9 } }, { area: 'algoritmi', type: 'ripassata' }, { area: 'algoritmi', type: 'ripassata', text: 5 }]) {
+    assert.strictEqual((await call('POST', '/api/annulla', b, c)).status, 400, JSON.stringify(b));
+  }
+  assert.strictEqual((await call('POST', '/api/annulla', { area: 'algoritmi', type: 'fatto', step })).status, 401, 'serve il login');
+  // dopo l'annulla si può rifare con minuti diversi; il passo non è più da verificare in mezzo
+  await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 45 }, c);
+  await call('POST', '/api/annulla', { area: 'algoritmi', type: 'fatto', step }, c);
+  assert.strictEqual((await (await call('GET', '/api/area/algoritmi', null, c)).json()).parts[0].weeks[0].steps[1].pending, undefined);
+  assert.strictEqual((await (await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 20 }, c)).json()).already, false);
+  assert.match(fs.readFileSync(f, 'utf8'), /\| fatto \| \[passo: Parte 1, Settimana 1, Array e stringhe\] 20 min\n$/);
+});
+
+test('annulla: in parallelo con le aggiunte non perde righe', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const step = { part: 1, week: 1, index: 1 };
+  await call('POST', '/api/fatto', { area: 'algoritmi', step, minutes: 45 }, c);
+  const adds = Array.from({ length: 10 }, (_, i) => call('POST', '/api/segnala', { area: 'algoritmi', type: 'altro', text: `n${i}` }, c));
+  const dels = Array.from({ length: 4 }, () => call('POST', '/api/annulla', { area: 'algoritmi', type: 'fatto', step }, c));
+  await Promise.all([...adds, ...dels]);
+  const lines = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, 10);
+  assert.ok(lines.every((l) => /\| altro \|/.test(l)));
+});
+
 test('ripassata: solo lacune esistenti, una riga sola, la lacuna passa in attesa del tutor', async (t) => {
   const { call, login, dir } = await start(t);
   const c = await login();

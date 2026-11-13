@@ -122,6 +122,29 @@ function createServer({ config, now = Date.now }) {
     return send(res, 200, { ok: true, already: line === null });
   }
 
+  // «Annulla»: toglie la riga `fatto` o `ripassata` ancora nel file (mai le altre). Se non c'è più risponde `gone`.
+  async function annulla(req, res) {
+    const b = await readJson(req);
+    if (b.type !== 'fatto' && b.type !== 'ripassata') return send(res, 400, { error: 'Tipo non valido' });
+    const a = typeof b.area === 'string' ? await data.area(b.area) : null;
+    if (!a) return send(res, 400, { error: 'Area sconosciuta' });
+    let match;
+    if (b.type === 'ripassata') {
+      const text = typeof b.text === 'string' ? b.text.trim() : '';
+      if (!text) return send(res, 400, { error: 'Lacuna sconosciuta' });
+      const t = P.gapText(text);
+      match = (r) => r.type === 'ripassata' && r.area === b.area && r.text === t;
+    } else {
+      const { part, week, index } = b.step && typeof b.step === 'object' ? b.step : {};
+      const found = a.parts.find((p) => p.n === part)?.weeks.find((w) => w.n === week)?.steps[index];
+      if (!found) return send(res, 400, { error: 'Passo sconosciuto' });
+      const key = P.fattoText(part, week, found.text, '').replace(/ min$/, '');
+      match = (r) => r.type === 'fatto' && r.area === b.area && r.text.replace(/\d{1,3} min$/, '') === key;
+    }
+    const removed = await data.removeReport(match);
+    return send(res, 200, removed ? { ok: true } : { ok: true, gone: true });
+  }
+
   async function api(req, res, p) {
     if (req.method === 'POST' && p === '/api/login') {
       const b = await readJson(req);
@@ -137,6 +160,7 @@ function createServer({ config, now = Date.now }) {
     }
     if (req.method === 'POST' && p === '/api/segnala') return segnala(req, res);
     if (req.method === 'POST' && p === '/api/fatto') return fatto(req, res);
+    if (req.method === 'POST' && p === '/api/annulla') return annulla(req, res);
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     const session = { url: config.sessionUrl || null, name: config.sessionName || null };
     if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });
