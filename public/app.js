@@ -40,6 +40,7 @@ const ICONS = {
   calendario: [['rect', { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ['path', { d: 'M4 10h16M8 3v4M16 3v4' }]],
   codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
   cerca: [['circle', { cx: 11, cy: 11, r: 6.5 }], ['path', { d: 'M16 16l5 5' }]],
+  timer: [['circle', { cx: 12, cy: 13, r: 8 }], ['path', { d: 'M12 9v4l2.5 2M9 2h6' }]],
   lacuna: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 8v5M12 16.5v.01' }]],
 };
 function icon(name, cls) {
@@ -169,18 +170,48 @@ function guessMinutes(time) {
   return m ? Math.min(999, Math.max(1, Number(m[1]))) : 30;
 }
 
+// Timer del passo: lo stato sta solo nel browser (localStorage), così un ricaricamento non lo perde.
+// {start} = in corso; {min} = fermato, minuti misurati (arrotondati, minimo 1) che «Fatto» propone.
+const timerKey = (area, step) => `timer:${area}:${step.part}:${step.week}:${step.index}`;
+const timerGet = (key) => { try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v && typeof v === 'object' ? v : null; } catch { return null; } };
+const timerSet = (key, v) => { try { if (v) localStorage.setItem(key, JSON.stringify(v)); else localStorage.removeItem(key); } catch { /* senza memoria il timer non resta */ } };
+const clock = (ms) => { const t = Math.max(0, Math.floor(ms / 1000)); const p = (n) => String(n).padStart(2, '0'); return t >= 3600 ? `${Math.floor(t / 3600)}:${p(Math.floor(t / 60) % 60)}:${p(t % 60)}` : `${Math.floor(t / 60)}:${p(t % 60)}`; };
+const measured = (ms) => Math.min(999, Math.max(1, Math.round(ms / 60000)));
+function timerBtn(key, onStop) {
+  const label = h('span');
+  const b = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'timer' }, icon('timer'), label);
+  let tick = null;
+  const sync = () => {
+    const t = timerGet(key);
+    if (tick) { clearInterval(tick); tick = null; }
+    if (t && Number.isFinite(t.start)) {
+      const show = () => { label.textContent = `Ferma · ${clock(Date.now() - t.start)}`; };
+      show(); b.dataset.running = '1';
+      tick = setInterval(() => { if (!b.isConnected) { clearInterval(tick); return; } show(); }, 1000);
+    } else { delete b.dataset.running; label.textContent = 'Avvia'; }
+  };
+  b.addEventListener('click', () => {
+    const t = timerGet(key);
+    if (t && Number.isFinite(t.start)) { const m = measured(Date.now() - t.start); timerSet(key, { min: m }); sync(); onStop(m); }
+    else timerSet(key, { start: Date.now() });
+    sync();
+  });
+  sync();
+  return b;
+}
+
 // «Fatto» con i minuti: scrive una riga che il tutor verifica; il passo resta «da verificare». Un invio solo.
-function doneBox(area, step, time, onSent, second) {
+function doneBox(area, step, time, onSent, second, onTimerStop) {
   const holder = h('div');
   const open = h('button', { class: `btn${second ? ' ghost strong' : ''}`, type: 'button', 'aria-expanded': 'false', 'data-act': 'fatto' }, icon('fatto'), 'Fatto');
   let form = null;
   open.addEventListener('click', () => {
     if (form) { form.remove(); form = null; open.setAttribute('aria-expanded', 'false'); return; }
     open.setAttribute('aria-expanded', 'true');
-    const min = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1, value: guessMinutes(time), 'aria-label': 'Minuti studiati' });
+    const min = h('input', { type: 'number', inputmode: 'numeric', min: 1, max: 999, step: 1, value: (timerGet(timerKey(area, step)) || {}).min || guessMinutes(time), 'aria-label': 'Minuti studiati' });
     const err = h('div', { class: 'error', role: 'alert' });
     const send = h('button', { class: 'btn', type: 'submit' }, 'Invia');
-    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, h('p', { class: 'small muted hint' }, 'Proposti dal tempo previsto: correggili. Il tutor verifica il passo alla prossima sessione.'), err, h('div', { class: 'row-btn' }, send));
+    form = h('form', { class: 'report done-form', novalidate: '' }, h('label', { class: 'small muted' }, 'Minuti studiati'), min, h('p', { class: 'small muted hint' }, 'Proposti dal timer o dal tempo previsto: correggili. Il tutor verifica il passo alla prossima sessione.'), err, h('div', { class: 'row-btn' }, send));
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       if (send.disabled) return;
@@ -189,7 +220,7 @@ function doneBox(area, step, time, onSent, second) {
       send.disabled = true; err.textContent = '';
       try {
         await api('/api/fatto', { area, step, minutes: n });
-        form.remove(); form = null; onSent(n);
+        timerSet(timerKey(area, step), null); form.remove(); form = null; onSent(n);
         toast('Segnato: il tutor lo verifica alla prossima sessione');
       } catch (e) { err.textContent = e.message; send.disabled = false; }
     });
@@ -257,6 +288,7 @@ function stepBody(area, title, ref, s, session, onDone) {
     });
     pending.append(undo);
   }
+  const tm = fb ? timerBtn(timerKey(area, ref), (m) => { const i = fb.holder.querySelector('input[type=number]'); if (i) i.value = m; }) : null;
   const nb = noteBtn(s.note);
   const tb = tutorBtn(session, `Studio, ${title}, parte ${ref.part}, settimana ${ref.week}. Passo: ${s.text}\nDomanda: `);
   return h('div', { class: 'step-body' },
@@ -264,6 +296,7 @@ function stepBody(area, title, ref, s, session, onDone) {
     docsBlock(s.docs), pending,
     h('div', { class: 'main-actions' }, main ? extBtn('Apri la risorsa', res.url) : null,
       (s.links || []).map((l) => extBtn(l.title ? `Apri: ${l.title}` : 'Apri un’altra risorsa', l.url, 'ghost')), fb ? fb.open : null),
+    tm ? h('div', { class: 'side-actions' }, tm) : null,
     fb ? fb.holder : null,
     nb.btn || tb.btn ? h('div', { class: 'side-actions' }, nb.btn, tb.btn) : null, nb.hint, tb.holder,
     h('div', { class: 'low-actions' }, rb.open, h('a', { class: 'btn quiet help', href: '#/come-funziona', 'aria-label': 'Come funziona', title: 'Come funziona' }, icon('aiuto'))),
