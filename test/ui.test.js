@@ -200,6 +200,28 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   // Fatto con i minuti: valore proposto dal tempo del passo, minuti non validi rifiutati, un invio solo con tocchi ripetuti
   await ev(toggle + '.click()'); // chiude il modulo Segnala rimasto aperto
   const doneBtn = 'document.querySelector("#adesso [data-act=fatto]")';
+  // Timer: Avvia -> tempo trascorso e Ferma; un ricaricamento non lo perde; fermato, «Fatto» propone i minuti (minimo 1)
+  const tmr = 'document.querySelector("#adesso [data-act=timer]")';
+  assert.strictEqual(await ev(tmr + '.textContent'), 'Avvia');
+  await noOverflow('timer'); await targets('timer');
+  await ev(tmr + '.click()');
+  assert.match(await ev(tmr + '.textContent'), /^Ferma · 0:0\d$/);
+  await ev(tmr + '.click()'); // fermato subito: minimo 1 minuto
+  assert.strictEqual(await ev(tmr + '.textContent'), 'Avvia');
+  await ev(doneBtn + '.click()');
+  assert.strictEqual(await ev('document.querySelector("form.done-form input").value'), '1', 'minimo 1 minuto');
+  await ev(doneBtn + '.click()');
+  await ev(tmr + '.click()'); // di nuovo in corso, iniziato 150 s fa
+  await ev('(() => { const k = Object.keys(localStorage).find((x) => x.startsWith("timer:")); localStorage.setItem(k, JSON.stringify({ start: Date.now() - 150000 })); return true; })()');
+  await ev('route().then(() => true)');
+  await waitFor('document.querySelector("#adesso [data-act=timer]") && /^Ferma · 2:[3-9]\\d$/.test(document.querySelector("#adesso [data-act=timer]").textContent)', 'timer ancora in corso dopo il ricaricamento');
+  await ev(doneBtn + '.click()'); // modulo aperto mentre il timer corre
+  await ev(tmr + '.click()');
+  assert.strictEqual(await ev('document.querySelector("form.done-form input").value'), '3', 'minuti misurati nel modulo aperto');
+  await ev(doneBtn + '.click()');
+  await ev('Object.keys(localStorage).filter((x) => x.startsWith("timer:")).forEach((x) => localStorage.removeItem(x))');
+  await ev('route().then(() => true)');
+  await waitFor('document.querySelector("#adesso [data-act=timer]")', 'timer ripulito');
   await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()'); await ev(doneBtn + '.click()');
   assert.strictEqual(await ev('document.querySelectorAll("form.done-form").length'), 1, 'tocchi ripetuti, un solo modulo');
   assert.strictEqual(await ev('document.querySelector("form.done-form input").value'), '180', '3 h proposte come 180 minuti');
