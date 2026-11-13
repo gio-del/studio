@@ -231,12 +231,11 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const undo = fatto + '.querySelector("[data-act=annulla]")';
   assert.strictEqual(await ev('!!' + undo), true, 'Annulla sul passo da verificare');
   await ev('(() => { const b = ' + fatto + '.querySelector("button.step"); if (b.getAttribute("aria-expanded") !== "true") b.click(); })()');
-  console.log('DBG', await ev('(() => { const b = ' + undo + '; const r = b.getBoundingClientRect(); return JSON.stringify([r.width, r.height, b.outerHTML, b.parentElement.className, b.closest("details").outerHTML.slice(0,80)]); })()'));
   assert.strictEqual(await ev('(() => { const r = ' + undo + '.getBoundingClientRect(); return r.height >= 43.5 && r.width >= 43.5; })()'), true, 'bersaglio >= 44px');
   await ev('(() => { const b = ' + undo + '; b.click(); b.click(); b.click(); })()');
   await waitFor('/^Array e stringhe/.test(document.querySelector("#adesso .step").textContent)', 'la cima torna al passo annullato');
   assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1, 'riga fatto tolta');
-  assert.strictEqual(await ev('!!' + fatto + '.querySelector("[data-act=fatto]") && !' + fatto + '.querySelector("[data-act=annulla]")'), true);
+  assert.strictEqual(await ev('!!document.querySelector("#adesso [data-act=fatto]") && !document.querySelector("[data-act=annulla]")'), true);
   await noOverflow('area dopo Annulla'); await targets('area dopo Annulla');
   await ev(doneBtn + '.click()');
   await ev('document.querySelector("form.done-form input").value = "45"');
