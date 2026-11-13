@@ -227,6 +227,21 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("ul.steps")', 'area ricaricata');
   assert.match(await ev(fatto + '.textContent'), /Da verificare con il tutor · 45 min/);
   await noOverflow('area dopo Fatto'); await targets('area dopo Fatto');
+  // Annulla: tocchi ripetuti, la riga sparisce e il passo torna com'era (la cima mostra di nuovo quel passo); poi si rifà con 45
+  const undo = fatto + '.querySelector("[data-act=annulla]")';
+  assert.strictEqual(await ev('!!' + undo), true, 'Annulla sul passo da verificare');
+  await ev('(() => { const b = ' + fatto + '.querySelector("button.step"); if (b.getAttribute("aria-expanded") !== "true") b.click(); })()');
+  assert.strictEqual(await ev('(() => { const r = ' + undo + '.getBoundingClientRect(); return r.height >= 43.5 && r.width >= 43.5; })()'), true, 'bersaglio >= 44px');
+  await ev('(() => { const b = ' + undo + '; b.click(); b.click(); b.click(); })()');
+  await waitFor('/^Array e stringhe/.test(document.querySelector("#adesso .step").textContent)', 'la cima torna al passo annullato');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 1, 'riga fatto tolta');
+  assert.strictEqual(await ev('!!document.querySelector("#adesso [data-act=fatto]") && !document.querySelector("[data-act=annulla]")'), true);
+  await noOverflow('area dopo Annulla'); await targets('area dopo Annulla');
+  await ev(doneBtn + '.click()');
+  await ev('document.querySelector("form.done-form input").value = "45"');
+  await ev('document.querySelector("form.done-form button[type=submit]").click()');
+  await waitFor('document.querySelector("#adesso .step") && /^Passo <script>/.test(document.querySelector("#adesso .step").textContent)', 'passo rifatto');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter(Boolean).length, 2);
 
   // Quando il file della nota c'è (arrivato da Obsidian), il pulsante la apre
   fs.mkdirSync(path.join(dir, 'Note', 'algoritmi'), { recursive: true });
@@ -331,6 +346,15 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/ripasso');
   await waitFor('document.querySelectorAll("main .waiting section.card").length === 1', 'ripasso ricaricato');
   assert.strictEqual(await ev('document.querySelectorAll("main .open section.card").length'), 1);
+  // Annulla sulla lacuna in attesa: tocchi ripetuti, la riga sparisce e la lacuna torna da ripassare; poi si rifà
+  const gundo = 'document.querySelector("main .waiting section.card [data-act=annulla]")';
+  assert.strictEqual(await ev(gundo + '.getBoundingClientRect().height >= 43.5'), true);
+  await ev('(() => { const b = ' + gundo + '; b.click(); b.click(); b.click(); })()');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 2', 'lacuna di nuovo da ripassare');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter((l) => /\| ripassata \|/.test(l)).length, 0);
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '2');
+  await ev('[...document.querySelectorAll("main .open section.card")].find((c) => /ricorsione/.test(c.textContent)).querySelector("button").click()');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && /ricorsione/.test(document.querySelector("main .waiting section.card").textContent)', 'lacuna di nuovo in attesa');
 
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {

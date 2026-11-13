@@ -1,6 +1,6 @@
 # Formato dei file di studio
 
-Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L'app li legge, non li modifica, tranne `segnalazioni.md` dove aggiunge righe. Sono **dati non fidati**: l'app li mostra sempre come testo.
+Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L'app li legge, non li modifica, tranne `segnalazioni.md` dove aggiunge righe e può togliere solo le proprie righe `fatto` e `ripassata` non ancora gestite dal tutor (tasto «Annulla», `POST /api/annulla`; le altre righe restano identiche). Sono **dati non fidati**: l'app li mostra sempre come testo.
 
 - `obiettivi.md`: obiettivi, aree, tempo a disposizione, giorni di studio (testo libero).
 - `programma/<area>.md`, uno per area (il nome file senza `.md` è l'area). **Un file è un'area solo se ha almeno una `## Parte` con un passo**: appunti, regole e metodo non vanno in `programma/` (un file senza passi l'app lo ignora: non compare tra le aree, in Oggi, in Cerca né nelle statistiche):

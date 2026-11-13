@@ -247,7 +247,16 @@ function stepBody(area, title, ref, s, session, onDone) {
   const pending = h('div', { class: 'chips pending' });
   const showPending = (min) => { pending.replaceChildren(chip(`Da verificare con il tutor · ${min} min`, 'pri')); };
   const fb = s.done || s.pending ? null : doneBox(area, ref, s.time, (min) => { showPending(min); fb.open.remove(); if (onDone) onDone(min); }, main);
-  if (s.pending) showPending(s.pending);
+  if (s.pending) {
+    showPending(s.pending);
+    const undo = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'annulla' }, 'Annulla');
+    undo.addEventListener('click', async () => {
+      if (undo.disabled) return;
+      undo.disabled = true;
+      try { await api('/api/annulla', { area, type: 'fatto', step: ref }); toast('Annullato'); if (onDone) onDone(0); } catch (e) { toast(e.message); undo.disabled = false; }
+    });
+    pending.append(undo);
+  }
   const nb = noteBtn(s.note);
   const tb = tutorBtn(session, `Studio, ${title}, parte ${ref.part}, settimana ${ref.week}. Passo: ${s.text}\nDomanda: `);
   return h('div', { class: 'step-body' },
@@ -478,10 +487,22 @@ function listOf(bl) {
 }
 
 // «Ripassata»: scrive una riga che il tutor gestisce; la lacuna passa subito «in attesa del tutor». Un invio solo.
-function gapCard(g, titles, onSent) {
+function gapCard(g, titles, onSent, onUndo) {
   const card = h('section', { class: 'card entry' },
     h('div', { class: 'top' }, when(g.date), chip(areaName(g.area, titles), 'pri'), g.part ? chip(g.part) : null), h('p', { class: 'what' }, g.text));
-  if (!onSent) { card.append(h('div', { class: 'chips' }, chip('In attesa del tutor', 'ok'))); return card; }
+  if (!onSent) {
+    card.append(h('div', { class: 'chips' }, chip('In attesa del tutor', 'ok')));
+    if (onUndo) {
+      const undo = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'annulla' }, 'Annulla');
+      undo.addEventListener('click', async () => {
+        if (undo.disabled) return;
+        undo.disabled = true;
+        try { await api('/api/annulla', { area: g.area, type: 'ripassata', text: g.text }); toast('Annullato'); onUndo(); } catch (e) { toast(e.message); undo.disabled = false; }
+      });
+      card.append(h('div', { class: 'actions' }, undo));
+    }
+    return card;
+  }
   const btn = h('button', { class: 'btn', type: 'button' }, icon('fatto'), 'Ripassata');
   const err = h('div', { class: 'error', role: 'alert' });
   btn.addEventListener('click', async () => {
@@ -507,11 +528,16 @@ async function pageRipasso(main) {
   const open = h('div', { class: 'open' });
   const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
   const sync = () => { wtitle.hidden = !wait.children.length; setBadge(open.children.length); };
-  for (const g of gaps) {
-    const card = gapCard(g, titles, () => { card.remove(); wait.append(gapCard(g, titles, null)); sync(); });
+  const addOpen = (g) => {
+    const card = gapCard(g, titles, () => { card.remove(); addWait(g); sync(); });
     open.append(card);
-  }
-  for (const g of waiting) wait.append(gapCard(g, titles, null));
+  };
+  const addWait = (g) => {
+    const card = gapCard(g, titles, null, () => { card.remove(); addOpen(g); sync(); });
+    wait.append(card);
+  };
+  for (const g of gaps) addOpen(g);
+  for (const g of waiting) addWait(g);
   main.append(open, wtitle, wait);
   sync();
 }
