@@ -114,10 +114,10 @@ function createServer({ config, now = Date.now }) {
     const found = a.parts.find((p) => p.n === part)?.weeks.find((w) => w.n === week)?.steps[index];
     if (!found) return send(res, 400, { error: 'Passo sconosciuto' });
     if (found.done) return send(res, 400, { error: 'Passo già fatto' });
-    const key = P.fattoText(part, week, found.text, '').replace(/ min$/, '');
+    const key = P.fattoKey(part, week, found.text);
     const same = (cur) => cur.split(/\r?\n/).some((l) => {
       const r = P.parseReports(l)[0];
-      return r && r.type === 'fatto' && r.area === b.area && r.text.replace(/\d{1,3} min$/, '') === key;
+      return P.isFattoOf(r, b.area, key);
     });
     const line = await data.appendReport({ area: b.area, type: 'fatto', text: P.fattoText(part, week, found.text, b.minutes) }, same);
     return send(res, 200, { ok: true, already: line === null });
@@ -139,8 +139,8 @@ function createServer({ config, now = Date.now }) {
       const { part, week, index } = b.step && typeof b.step === 'object' ? b.step : {};
       const found = a.parts.find((p) => p.n === part)?.weeks.find((w) => w.n === week)?.steps[index];
       if (!found) return send(res, 400, { error: 'Passo sconosciuto' });
-      const key = P.fattoText(part, week, found.text, '').replace(/ min$/, '');
-      match = (r) => r.type === 'fatto' && r.area === b.area && r.text.replace(/\d{1,3} min$/, '') === key;
+      const key = P.fattoKey(part, week, found.text);
+      match = (r) => P.isFattoOf(r, b.area, key);
     }
     const removed = await data.removeReport(match);
     return send(res, 200, removed ? { ok: true } : { ok: true, gone: true });
