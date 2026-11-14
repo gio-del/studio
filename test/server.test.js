@@ -191,8 +191,14 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   // il 2026-11-09 è lunedì: vale la riga di lunedì; un'area senza passi aperti o sconosciuta non diventa «oggi»
   fs.writeFileSync(path.join(dir, 'calendario.md'), '# Calendario\n- sistemi | lun | 08:00 | 30\n- inventata | lun | 08:30 | 30\n- Algoritmi | lun,gio | 19:00 | 60\n- algoritmi | mar | 07:00 | 45\n<script>\n');
   ov = await (await call('GET', '/api/overview', null, c)).json();
-  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'calendario', time: '19:00', minutes: 60 });
+  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'calendario', time: '19:00', minutes: 60, plannedToday: 90, doneToday: 0 });
   assert.deepStrictEqual(ov.later, []);
+  // minuti di oggi contro quelli previsti: contano solo le righe di progressi.md di oggi, non le `fatto` in attesa
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 30 min\n- 2026-11-02 | algoritmi | vecchio | ok | 99 min\n');
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), '- 2026-11-09 12:05 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Array] 40 min\n');
+  ov = await (await call('GET', '/api/overview', null, c)).json();
+  assert.strictEqual(ov.focus.plannedToday, 90);
+  assert.strictEqual(ov.focus.doneToday, 30);
   const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();
   assert.strictEqual(a.title, 'Algoritmi');
   assert.ok(a.resources.length > 0);
