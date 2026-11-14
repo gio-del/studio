@@ -162,6 +162,8 @@ li.next .step-text { font-weight: 600; }
 .doc-title, .doc-prev { overflow-wrap: anywhere; margin: 0; }
 .doc-title { font-weight: 600; }
 .doc .btn { margin-top: var(--s2); }
+.doc .row-btn { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.cards .head { display: flex; align-items: center; gap: var(--s2); font-weight: 700; margin-bottom: var(--s2); }
 .step-body .res { display: flex; align-items: flex-start; gap: var(--s2); margin-bottom: var(--s2); }
 .step-body .res .ic { margin-top: 2px; color: var(--muted); }
 form.report { margin-top: var(--s3); padding: var(--s3); background: var(--surface-2); border-radius: var(--r-ctl); }

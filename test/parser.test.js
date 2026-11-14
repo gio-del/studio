@@ -230,3 +230,14 @@ test('fattoKey e isFattoOf: minuti di 1, 2 e 3 cifre, testo con «min»', () => 
   assert.ok(!P.isFattoOf(r, 'a', P.fattoKey(1, 2, 'Leggi 20')));
   assert.ok(!P.isFattoOf(undefined, 'a', key));
 });
+
+test('dueCards: traguardi 1, 3, 7, 21 giorni, al massimo 3, più recenti prima', () => {
+  const ago = (n) => new Date(Date.UTC(2026, 10, 14 - n)).toISOString().slice(0, 10);
+  const c = (n, rest = 'algoritmi - Passo') => ({ name: `${ago(n)} ${rest}.md`, base: `${ago(n)} ${rest}`, title: `T${n}`, preview: 'p', url: null });
+  const due = P.dueCards([c(30), c(8), c(0), c(3), c(1), c(-2)], '2026-11-14');
+  assert.deepStrictEqual(due.map((d) => [d.title, d.milestone]), [['T1', 1], ['T3', 3], ['T8', 7]]);
+  assert.deepStrictEqual(P.dueCards([c(30), c(21), c(8)], '2026-11-14', 9).map((d) => d.milestone), [7, 21, 21]);
+  assert.deepStrictEqual(P.dueCards([{ base: '2026-13-45 a - b' }, { base: 'senza data' }, { base: '2026-02-30 a - b' }, {}], '2026-11-14'), []);
+  assert.deepStrictEqual(P.dueCards([c(2)], 'no'), []);
+  assert.deepStrictEqual(P.dueCards(null, '2026-11-14'), []);
+});

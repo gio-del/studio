@@ -609,3 +609,23 @@ test('STUDIO_GOAL_HOURS: Oggi, Statistiche e riassunto usano il valore; non vali
   const src = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   assert.ok(!/7 ore|7 h\b/.test(src), 'nessun «7 ore» fisso nell\'interfaccia');
 });
+
+test('overview: schede da rileggere dai nomi file, sola lettura', async (t) => {
+  const dir = makeFixture();
+  const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', HS_OBSIDIAN_VAULT: 'V' }), now: () => new Date(2026, 10, 9, 12, 5).getTime() });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(() => { server.close(); fs.rmSync(dir, { recursive: true, force: true }); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const cookie = (await fetch(`${base}/api/login`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ user: 'studio', password: 'segreto' }) })).headers.get('set-cookie').split(';')[0];
+  const ov = async () => (await (await fetch(`${base}/api/overview`, { headers: { cookie } })).json()).schedeDaRileggere;
+  assert.deepStrictEqual(await ov(), []); // senza Schede/
+  fs.mkdirSync(path.join(dir, 'Schede'));
+  assert.deepStrictEqual(await ov(), []);
+  for (const [d, n] of [['2026-11-08', 'uno'], ['2026-11-06', 'tre'], ['2026-11-01', 'otto'], ['2026-10-10', 'trenta'], ['2026-11-09', 'oggi']]) fs.writeFileSync(path.join(dir, 'Schede', `${d} algoritmi - ${n}.md`), `# Scheda <b>${n}</b>\ntesto`);
+  fs.writeFileSync(path.join(dir, 'Schede', 'senza data.md'), 'x');
+  const before = fs.readdirSync(path.join(dir, 'Schede')).sort();
+  const list = await ov();
+  assert.deepStrictEqual(list.map((c) => [c.title, c.milestone]), [['Scheda <b>uno</b>', 1], ['Scheda <b>tre</b>', 3], ['Scheda <b>otto</b>', 7], ['Scheda <b>trenta</b>', 21]].slice(0, 4));
+  assert.ok(list[0].url.startsWith('obsidian://open?vault=V&file=Studio%2FSchede%2F'));
+  assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Schede')).sort(), before);
+});

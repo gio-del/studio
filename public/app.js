@@ -319,6 +319,28 @@ function areaRows(areas, extra) {
     h('span', { class: 'count' }, `${a.done}/${a.total}`), icon('avanti', 'chev'))));
 }
 
+const docRow = (d, extra) => h('div', { class: 'doc' }, h('div', { class: 'doc-title' }, d.title),
+  d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
+  obsidianUrl(d.url) || extra ? h('div', { class: 'row-btn' }, obsidianUrl(d.url) ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null, extra || null) : null);
+
+// Schede da rileggere: «Riletta» si ricorda solo nel browser (localStorage), per scheda e traguardo.
+const readKey = (c) => `riletta:${c.name}:${c.milestone}`;
+const readGet = (c) => { try { return !!localStorage.getItem(readKey(c)); } catch { return false; } };
+const readSet = (c) => { try { localStorage.setItem(readKey(c), '1'); } catch { /* senza memoria torna alla prossima visita */ } };
+function cardsDue(list) {
+  const due = (Array.isArray(list) ? list : []).filter((c) => c && typeof c.name === 'string' && Number.isInteger(c.milestone) && !readGet(c)).slice(0, 3);
+  if (!due.length) return null;
+  const sec = h('section', { class: 'card cards', 'aria-label': 'Da rileggere' });
+  const draw = () => {
+    const left = due.filter((c) => !readGet(c));
+    sec.replaceChildren(h('div', { class: 'head' }, icon('lacuna'), 'Da rileggere'),
+      ...left.map((c) => docRow(c, h('button', { class: 'btn', type: 'button', 'data-act': 'riletta', onclick: () => { readSet(c); draw(); } }, 'Riletta'))));
+    if (!left.length) sec.remove();
+  };
+  draw();
+  return sec;
+}
+
 // Oggi: una cosa sola. Prima le lacune da ripassare, poi il passo dell'area di oggi, sotto le altre aree.
 async function pageOggi(main) {
   const o = await api('/api/overview');
@@ -340,6 +362,8 @@ async function pageOggi(main) {
       h('ul', null, o.firstGaps.map((g) => h('li', null, g.text, h('span', { class: 'small' }, ` · ${g.title}`)))),
       h('a', { class: 'gaplink', href: '#/ripasso' }, o.gapsTotal > o.firstGaps.length ? 'Vedi tutte' : 'Apri il ripasso', icon('avanti'))));
   }
+  const dueCard = cardsDue(o.schedeDaRileggere);
+  if (dueCard) main.append(dueCard);
   const f = o.focus && by[o.focus.area];
   if (f && f.next) {
     const n = f.next;
@@ -735,9 +759,6 @@ async function pageCerca(main, q) {
   main.append(h('form', { class: 'search', role: 'search', onsubmit: (e) => e.preventDefault() }, input), out);
   const group = (title, items) => (items.length ? h('section', { class: 'card group' }, h('h2', null, `${title} (${items.length})`), h('div', { class: 'list' }, items)) : null);
   const row = (href, title, sub) => h('a', { class: 'row', href }, h('span', { class: 'grow' }, h('span', { class: 'title' }, title), sub ? h('span', { class: 'small muted sub' }, sub) : null), icon('avanti', 'chev'));
-  const docRow = (d) => h('div', { class: 'doc' }, h('div', { class: 'doc-title' }, d.title),
-    d.preview ? h('p', { class: 'small muted doc-prev' }, d.preview) : null,
-    obsidianUrl(d.url) ? h('a', { class: 'btn ghost', href: d.url }, 'Apri in Obsidian', icon('fuori')) : null);
   let tick = 0, timer = null;
   async function run() {
     const my = ++tick;
