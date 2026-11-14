@@ -128,6 +128,14 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await reloadOggi();
   assert.match(await ev('document.querySelector("section.hero .today-min").textContent'), /Fatto per oggi/);
   await noOverflow('oggi fatto'); await targets('oggi fatto');
+  // ieri non studiato: una riga sola su Oggi
+  const yKey = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][(new Date().getDay() + 6) % 7];
+  fs.writeFileSync(path.join(dir, 'calendario.md'), `- Algoritmi | ${dayKey} | 18:00 | 45\n- Algoritmi | ${yKey} | 18:00 | 45\n`);
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '');
+  await reloadOggi();
+  assert.strictEqual(await ev('document.querySelectorAll("section.hero .missed").length'), 1);
+  assert.match(await ev('document.querySelector("section.hero .missed").textContent'), /^Ieri: Algoritmi, 45 min non fatti$/);
+  await noOverflow('oggi con ieri saltato'); await targets('oggi con ieri saltato');
   fs.writeFileSync(path.join(dir, 'progressi.md'), progOrig);
   fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   await reloadOggi();
