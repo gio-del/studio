@@ -521,7 +521,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await ev('location.reload()');
   await waitFor('!!document.querySelector("section.hero")', 'Oggi dopo il ricaricamento');
   assert.strictEqual(await ev('Object.keys(localStorage).filter((k) => /^riletta:.+:\\d+$/.test(k)).length'), 2);
-  assert.strictEqual(await ev('document.querySelectorAll("section.cards .doc").length'), 1);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cards .doc").length'), 2, 'la scheda più vecchia prende il posto di quelle lette');
   await noOverflow('da rileggere dopo Riletta');
   // sola lettura: nessuna scrittura da «Riletta»
   assert.strictEqual(fs.existsSync(path.join(dir, 'segnalazioni.md')) ? fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8') : null, segnBefore);
