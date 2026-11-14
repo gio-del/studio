@@ -117,6 +117,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const dayKey = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][new Date().getDay()];
   const isoToday = new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const reloadOggi = async () => { await ev('route().then(() => true)'); await waitFor('!!document.querySelector("section.hero")', 'Oggi dopo il calendario'); };
+  const progOrig = fs.readFileSync(path.join(dir, 'progressi.md'), 'utf8');
   fs.writeFileSync(path.join(dir, 'calendario.md'), `- Algoritmi | ${dayKey} | 18:00 | 45\n`);
   fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${isoToday} | algoritmi | Array | ok | 30 min\n`);
   await reloadOggi();
@@ -127,7 +128,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await reloadOggi();
   assert.match(await ev('document.querySelector("section.hero .today-min").textContent'), /Fatto per oggi/);
   await noOverflow('oggi fatto'); await targets('oggi fatto');
-  fs.rmSync(path.join(dir, 'progressi.md'));
+  fs.writeFileSync(path.join(dir, 'progressi.md'), progOrig);
   fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
   await reloadOggi();
 
