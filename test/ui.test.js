@@ -446,7 +446,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const progBak = fs.readFileSync(path.join(dir, 'progressi.md'), 'utf8'), algoBak = fs.readFileSync(path.join(dir, 'programma', 'algoritmi.md'), 'utf8');
   fs.writeFileSync(path.join(dir, 'programma', 'algoritmi.md'), '## Parte 1: A\n### Settimana 1\n- [ ] uno (risorsa: Libro, 1 h)\n- [ ] due (risorsa: Libro, 1 h)\n- [ ] tre (risorsa: Libro, 1 h)\n');
   fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-10 | algoritmi | uno | ok | 90 min\n- 2026-11-10 | algoritmi | due | ok | 90 min\n- 2026-11-10 | algoritmi | tre | ok | 60 min\n');
-  await go('#/andamento/statistiche');
+  await go('#/oggi'); await go('#/andamento/statistiche');
   await waitFor('!!document.querySelector(".timeratio")', 'riga tempo reale');
   assert.match(await ev('document.querySelector(".timeratio").textContent'), /Tempo reale \/ stimato: \+33% \(su 3 passi\)/);
   await noOverflow('statistiche tempo'); await targets('statistiche tempo');
