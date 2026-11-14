@@ -635,3 +635,16 @@ test('overview: schede da rileggere dai nomi file, sola lettura', async (t) => {
   assert.ok(list[0].url.startsWith('obsidian://open?vault=V&file=Studio%2FSchede%2F'));
   assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Schede')).sort(), before);
 });
+
+test('statistiche: tempo reale contro stimato per area', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  fs.writeFileSync(path.join(dir, 'programma', 'algoritmi.md'), '## Parte 1: A\n### Settimana 1\n- [ ] lungo (risorsa: Libro, 1 h)\n- [ ] corto (risorsa: Libro, 60 min)\n- [ ] senza stima\n- [ ] giusto (risorsa: Libro, 30 min)\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-10 | algoritmi | lungo | ok | 90 min\n- 2026-11-10 | algoritmi | corto | ok | 30 min\n- 2026-11-10 | algoritmi | senza stima | ok | 90 min\n- 2026-11-10 | algoritmi | altro nome | ok | 90 min\n- 2026-11-11 | algoritmi | giusto | ok | 30 min\n- 2026-11-11 | sistemi | lungo | ok | 30 min\n');
+  const st = await (await call('GET', '/api/stats', null, c)).json();
+  const algo = st.areas.find((a) => a.area === 'algoritmi');
+  assert.strictEqual(algo.compared, 3);
+  assert.strictEqual(algo.ratio, 150 / 150);
+  const sis = st.areas.find((a) => a.area === 'sistemi');
+  assert.deepStrictEqual([sis.compared, sis.ratio], [0, null]);
+});
