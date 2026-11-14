@@ -504,6 +504,33 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelector("#cerca") && document.querySelector("#cerca").value === "hash" && document.querySelectorAll("#risultati .group").length === 3', 'indirizzo proprio con q');
   await go('#/altro');
 
+  // Oggi: «Da rileggere», schede a 1, 3, 8 e 30 giorni fa: al massimo 3, le più recenti prima; «Riletta» a tocchi ripetuti
+  fs.mkdirSync(path.join(dir, 'Schede'), { recursive: true });
+  const ago = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  for (const n of [1, 3, 8, 30]) fs.writeFileSync(path.join(dir, 'Schede', `${ago(n)} Zeta - Tema ${n}.md`), `# Scheda <b>${n}</b>\nanteprima ${n}`);
+  const segnBefore = fs.existsSync(path.join(dir, 'segnalazioni.md')) ? fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8') : null;
+  await ev('localStorage.clear()');
+  await go('#/oggi'); await ev('location.reload()');
+  await waitFor('!!document.querySelector("section.cards")', 'sezione Da rileggere');
+  assert.strictEqual(await ev('[...document.querySelectorAll("section.cards .doc-title")].map((e) => e.textContent).join("|")'), 'Scheda <b>1</b>|Scheda <b>3</b>|Scheda <b>8</b>');
+  assert.strictEqual(await ev('document.querySelectorAll("section.cards b").length'), 0);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cards a[href^=\'obsidian://open?\']").length'), 3);
+  await noOverflow('da rileggere'); await targets('da rileggere');
+  await ev('document.querySelector("section.cards [data-act=riletta]").click(); document.querySelector("section.cards [data-act=riletta]") && document.querySelector("section.cards [data-act=riletta]").click()');
+  await waitFor('document.querySelectorAll("section.cards .doc").length === 1', 'schede lette tolte');
+  await ev('location.reload()');
+  await waitFor('!!document.querySelector("section.hero")', 'Oggi dopo il ricaricamento');
+  assert.strictEqual(await ev('Object.keys(localStorage).filter((k) => /^riletta:.+:\\d+$/.test(k)).length'), 2);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cards .doc").length'), 1);
+  await noOverflow('da rileggere dopo Riletta');
+  // sola lettura: nessuna scrittura da «Riletta»
+  assert.strictEqual(fs.existsSync(path.join(dir, 'segnalazioni.md')) ? fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8') : null, segnBefore);
+  fs.rmSync(path.join(dir, 'Schede'), { recursive: true });
+  await ev('location.reload()');
+  await waitFor('!!document.querySelector("section.hero")', 'Oggi senza Schede');
+  assert.strictEqual(await ev('document.querySelectorAll("section.cards").length'), 0);
+  await go('#/altro');
+
   // Altro: Esci riporta al login e nasconde il menu
   await go('#/altro');
   await waitFor('!!document.querySelector("#esci")', 'altro');
