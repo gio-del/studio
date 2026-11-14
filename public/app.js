@@ -115,6 +115,16 @@ function bar(done, total) {
   const s = h('span'); s.style.width = `${pct}%`; b.append(s);
   return b;
 }
+// «Oggi: 30 di 45 min» (minuti di progressi.md contro quelli in calendario); a obiettivo raggiunto, «Fatto per oggi».
+function todayLine(focus) {
+  if (focus.reason !== 'calendario' || !(focus.plannedToday > 0)) return null;
+  const done = focus.doneToday || 0;
+  const over = done >= focus.plannedToday;
+  return h('div', { class: 'today-min' },
+    h('p', { class: 'small' }, over ? [h('strong', null, 'Fatto per oggi'), ` · ${done} di ${focus.plannedToday} min. Puoi fermarti qui o proseguire con il prossimo passo.`]
+      : `Oggi: ${done} di ${focus.plannedToday} min`),
+    bar(done, focus.plannedToday));
+}
 function empty(ic, title, text) {
   return h('div', { class: 'empty' }, icon(ic), h('div', null, h('strong', null, title)), text ? h('div', { class: 'small' }, text) : null);
 }
@@ -376,6 +386,7 @@ async function pageOggi(main) {
       h('div', { class: 'where' }, `Parte ${f.part.n}${f.part.title ? ` · ${f.part.title}` : ''} · settimana ${f.week}`),
       h('p', { class: 'step' }, n.text),
       n.time ? h('p', { class: 'where time' }, icon('tempo'), n.time) : null,
+      todayLine(o.focus),
       stepBody(f.area, f.title, { part: n.part, week: n.week, index: n.index }, n, o.session, () => route()),
       h('a', { class: 'more-link', href: areaHref(f.area) }, 'Tutto il programma dell’area', icon('avanti'))));
   } else {
