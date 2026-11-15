@@ -679,6 +679,7 @@ async function pageStatistiche(main) {
       bar(a.done, a.total),
       h('div', { class: 'chips' }, chip(`${a.done}/${a.total} passi`), chip(hours(a.minutes) + ' in tutto'), chip(a.weekMinutes ? `${hours(a.weekMinutes)} questa settimana` : 'ferma questa settimana', a.weekMinutes ? 'pri' : 'gap'),
         a.verifiche ? chip(`${a.superate}/${a.verifiche} verifiche superate`, a.superate === a.verifiche ? 'ok' : '') : null),
+      a.compared >= 3 && a.ratio != null ? h('p', { class: 'small muted timeratio' }, `Tempo reale / stimato: ${a.ratio >= 1 ? '+' : ''}${Math.round((a.ratio - 1) * 100)}% (su ${a.compared} passi)`) : null,
       a.done < a.total ? h('p', { class: 'small muted forecast' }, a.weeksLeft == null ? 'Ritmo troppo basso per stimare.' : `Al ritmo delle ultime 4 settimane: circa ${plural(a.weeksLeft, 'settimana', 'settimane')} alla fine.`) : null),
       icon('avanti', 'chev')));
   }

@@ -241,3 +241,14 @@ test('dueCards: traguardi 1, 3, 7, 21 giorni, al massimo 3, più recenti prima',
   assert.deepStrictEqual(P.dueCards([c(2)], 'no'), []);
   assert.deepStrictEqual(P.dueCards(null, '2026-11-14'), []);
 });
+
+test('parser: tempo reale contro stimato per passo', () => {
+  const prog = P.parseProgram('## Parte 1: A\n### Settimana 1\n- [ ] lungo (risorsa: Libro, 1 h)\n- [ ] corto (risorsa: Libro, 60 min)\n- [ ] senza stima\n- [ ] Giusto (risorsa: Libro, 30 min)\n');
+  const rows = P.parseProgress('- 2026-11-02 | a | lungo | ok | 45 min\n- 2026-11-03 | a | Lungo | ok | 45 min\n- 2026-11-03 | a | corto | ok | 30 min\n- 2026-11-04 | a | senza stima | ok | 90 min\n- 2026-11-04 | a | nome diverso | ok | 90 min\n- 2026-11-05 | a | giusto | ok\n');
+  const c = P.compareTime(rows, prog);
+  assert.deepStrictEqual([c.compared, c.real, c.estimated], [2, 120, 120]);
+  assert.strictEqual(c.ratio, 1);
+  const d = P.compareTime(rows.slice(0, 1), prog);
+  assert.deepStrictEqual([d.compared, d.real, d.estimated, d.ratio], [1, 45, 60, 0.75]);
+  assert.deepStrictEqual(P.compareTime([], prog), { compared: 0, real: 0, estimated: 0, ratio: null });
+});
