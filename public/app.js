@@ -387,6 +387,7 @@ async function pageOggi(main) {
       h('p', { class: 'step' }, n.text),
       n.time ? h('p', { class: 'where time' }, icon('tempo'), n.time) : null,
       todayLine(o.focus),
+      o.missedYesterday ? h('p', { class: 'small missed' }, `Ieri: ${areaName(o.missedYesterday.area, Object.fromEntries(o.areas.map((x) => [x.area, x.title])))}, ${o.missedYesterday.minutes} min non fatti`) : null,
       stepBody(f.area, f.title, { part: n.part, week: n.week, index: n.index }, n, o.session, () => route()),
       h('a', { class: 'more-link', href: areaHref(f.area) }, 'Tutto il programma dell’area', icon('avanti'))));
   } else {

@@ -636,6 +636,26 @@ test('overview: schede da rileggere dai nomi file, sola lettura', async (t) => {
   assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Schede')).sort(), before);
 });
 
+test('oggi: ieri non studiato (missedYesterday), sola lettura', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const get = async () => (await (await call('GET', '/api/overview', null, c)).json()).missedYesterday;
+  assert.strictEqual(await get(), null, 'senza calendario');
+  // il 2026-11-09 è lunedì: ieri è domenica (2026-11-08)
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- Algoritmi | dom | 19:00 | 45\n- sistemi | lun | 08:00 | 30\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-07 | algoritmi | Array | ok | 45 min\n');
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), '');
+  assert.deepStrictEqual(await get(), { area: 'algoritmi', minutes: 45 });
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), '- 2026-11-08 20:00 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Array] 40 min\n');
+  assert.strictEqual(await get(), null, 'la riga fatto in attesa conta');
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), '');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-08 | algoritmi | Array | ok | 20 min\n');
+  assert.strictEqual(await get(), null, 'studio registrato per quell\'area');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '');
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- Algoritmi | sab | 19:00 | 45\n');
+  assert.strictEqual(await get(), null, 'ieri di riposo');
+});
+
 test('statistiche: tempo reale contro stimato per area', async (t) => {
   const { call, login, dir } = await start(t);
   const c = await login();
