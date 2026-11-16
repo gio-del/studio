@@ -485,6 +485,33 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.match(await ev('document.querySelector(".timeratio").textContent'), /Tempo reale \/ stimato: \+33% \(su 3 passi\)/);
   await noOverflow('statistiche tempo'); await targets('statistiche tempo');
   fs.writeFileSync(path.join(dir, 'progressi.md'), progBak); fs.writeFileSync(path.join(dir, 'programma', 'algoritmi.md'), algoBak);
+  // «La settimana scorsa»: i numeri di /api/riassunto; senza dati la card non c'è (ricarica dopo il cambio dei dati)
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-01-05 | algoritmi | vecchio | ok | 30 min\n');
+  await go('#/oggi'); await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche senza dati della settimana scorsa');
+  assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 0, 'senza dati della settimana scorsa niente card');
+  const lwDay = new Date(); lwDay.setDate(lwDay.getDate() - ((lwDay.getDay() + 6) % 7) - 6); // martedì della settimana scorsa
+  const lwIso = new Date(lwDay.getTime() - lwDay.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${lwIso} | algoritmi | uno | ok | 90 min\n- ${lwIso} | algoritmi | due | ok | 60 min\n`);
+  await go('#/oggi'); await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".lastweek")', 'card della settimana scorsa');
+  const rj = await ev('fetch("/api/riassunto").then((r) => r.json())');
+  assert.strictEqual(rj.minutes, 150); assert.strictEqual(rj.sessions, 2);
+  const lwText = await ev('document.querySelector(".lastweek").textContent');
+  assert.match(lwText, /^La settimana scorsa/);
+  assert.ok(lwText.includes(`2 h 30 su ${rj.goalMinutes % 60 ? rj.goalMinutes + ' min' : rj.goalMinutes / 60 + ' h'}`), lwText);
+  assert.match(lwText, /2 sessioni · \d+ parti? chius[ae]/);
+  assert.match(lwText, new RegExp(`${rj.gapsOpen} lacun`));
+  assert.strictEqual(await ev('document.querySelector(".lastweek").nextElementSibling.classList.contains("stat-hero")'), true, 'la card è in cima');
+  await noOverflow('statistiche settimana scorsa'); await targets('statistiche settimana scorsa');
+  for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
+  await sleep(300);
+  assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 1, 'tocchi ripetuti: una sola card');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-01-05 | algoritmi | vecchio | ok | 30 min\n');
+  await go('#/oggi'); await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche senza la card');
+  assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 0, 'dati tolti: la card sparisce');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), progBak);
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
