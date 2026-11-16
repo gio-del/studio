@@ -597,7 +597,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   // Guscio offline: con il server spento l'app si apre dalla cache e dice che non lo raggiunge, con «Riprova»
   await fill('#user', 'studio'); await fill('#password', 'segreto');
   await ev('document.querySelector("form button").click()');
-  await waitFor('!!document.querySelector("section.hero")', 'Oggi dopo il nuovo accesso');
+  await waitFor('!!document.querySelector("#esci")', 'Altro dopo il nuovo accesso');
   await waitFor('navigator.serviceWorker.ready.then((r) => !!r.active)', 'service worker attivo');
   assert.strictEqual(await ev('caches.keys().then(async (ks) => { for (const k of ks) for (const r of await (await caches.open(k)).keys()) if (new URL(r.url).pathname.startsWith("/api/")) return true; return false; })'), false, 'nessuna risposta /api/ in cache');
   server.closeAllConnections();
