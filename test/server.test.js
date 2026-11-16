@@ -219,6 +219,21 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   assert.match((await call('GET', '/')).headers.get('content-security-policy'), /manifest-src 'self'/);
 });
 
+test('service worker: stessa origine, no-cache, CSP stretta, le API non finiscono mai in cache', async (t) => {
+  const { call } = await start(t);
+  const r = await call('GET', '/sw.js');
+  assert.strictEqual(r.status, 200);
+  assert.match(r.headers.get('content-type'), /javascript/);
+  assert.strictEqual(r.headers.get('cache-control'), 'no-cache');
+  const csp = r.headers.get('content-security-policy');
+  assert.match(csp, /script-src 'self'/);
+  assert.doesNotMatch(csp, /unsafe-inline|unsafe-eval/);
+  const src = await r.text();
+  assert.match(src, /startsWith\('\/api\/'\)/, 'le richieste /api/ non passano dal worker');
+  assert.doesNotMatch(src, /SHELL = \[[^\]]*\/api/);
+  assert.match(await (await call('GET', '/app.js')).text(), /serviceWorker\.register\('\/sw\.js'\)/);
+});
+
 test('fatto: una riga con i minuti, mai doppia, minuti e passi non validi rifiutati, il passo risulta da verificare', async (t) => {
   const { call, login, dir } = await start(t);
   const c = await login();

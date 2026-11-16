@@ -74,7 +74,7 @@ function toast(msg) {
 
 async function api(path, body) {
   let r;
-  try { r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); } catch { throw new Error('Non riesco a raggiungere Studio. Controlla la connessione e riprova.'); }
+  try { r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}); } catch { throw new Error('Non raggiungo il server. Controlla la connessione e riprova.'); }
   if (r.status === 401 && path !== '/api/login') { showLogin(); throw new Error('login'); }
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(j.error || `Errore ${r.status}`);
@@ -953,4 +953,5 @@ async function route() {
   if (badge === null) api('/api/lacune').then((r) => setBadge(r.gaps.length)).catch(() => {});
 }
 window.addEventListener('hashchange', route);
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
 route();
