@@ -457,6 +457,22 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
 });
 
+test('obiettivi: testo presente, file mancante, HTML ostile', async (t) => {
+  const { call, login, dir } = await start(t);
+  assert.strictEqual((await call('GET', '/api/obiettivi')).status, 401);
+  const c = await login();
+  const miss = await call('GET', '/api/obiettivi', null, c);
+  assert.strictEqual(miss.status, 200);
+  assert.deepStrictEqual(await miss.json(), { text: '', blocks: [] });
+  fs.writeFileSync(path.join(dir, 'obiettivi.md'), '# Obiettivi\n- imparare, 7 ore a settimana\n- <img src=x onerror=alert(1)> [x](javascript:alert(1)) [ok](https://example.com/a)\n');
+  const r = await (await call('GET', '/api/obiettivi', null, c)).json();
+  assert.match(r.text, /7 ore a settimana/);
+  assert.ok(r.blocks.length >= 2);
+  const urls = r.blocks.flatMap((b) => b.parts.map((x) => x.url).filter(Boolean));
+  assert.deepStrictEqual(urls, ['https://example.com/a']);
+  assert.ok(r.blocks.some((b) => b.parts.some((x) => x.text.includes('<img'))), 'l\'HTML resta testo');
+});
+
 test('riassunto della settimana scorsa: solo numeri e aree valide', async (t) => {
   const { call, login, dir } = await start(t);
   const bin = path.join(__dirname, '..', 'bin', 'riassunto.js');

@@ -30,6 +30,7 @@ function cdp(wsUrl) {
 test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione', { skip: !CHROME && 'Chromium non installato', timeout: 120000 }, async (t) => {
   const dir = makeFixture();
   fs.writeFileSync(path.join(dir, 'calendario.md'), '- Sistemi | lun,mer | 07:15 | 30\n- <b>x</b> | dom | 09:00 | 45\n');
+  fs.writeFileSync(path.join(dir, 'obiettivi.md'), '# Obiettivi\n- imparare, 7 ore a settimana <b>x</b>\n');
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'studio-ui-'));
   const server = createServer({ config: readConfig({ STUDIO_DIR: dir, AUTH_PASSWORD: 'segreto', PORT: '0', STUDIO_SESSION_URL: 'https://example.com/sessione', STUDIO_SESSION_NAME: 'tutor', HS_OBSIDIAN_VAULT: 'Il mio vault' }) });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -430,7 +431,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && /ricorsione/.test(document.querySelector("main .waiting section.card").textContent)', 'lacuna di nuovo in attesa');
 
   // Altre pagine
-  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
+  for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/obiettivi', 'main section.card', /(?=[\s\S]*7 ore a settimana <b>x<\/b>)/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);
     await waitFor('!!document.querySelector(' + JSON.stringify(probe) + ')', hash);
     assert.match(await text(), re, hash);
@@ -440,6 +441,13 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   }
   assert.strictEqual(await ev('document.querySelectorAll("section.cal-day").length'), 7, 'sette giorni');
   assert.strictEqual(await ev('document.querySelectorAll("section.cal-day.is-today").length'), 1, 'un solo oggi');
+  // Obiettivi: file mancante = stato vuoto
+  fs.renameSync(path.join(dir, 'obiettivi.md'), path.join(dir, 'obiettivi.off'));
+  await go('#/altro'); await go('#/obiettivi');
+  await waitFor('!!document.querySelector("main .empty")', 'obiettivi vuoti');
+  assert.match(await text(), /Nessun obiettivo ancora/);
+  await noOverflow('obiettivi vuoti'); await targets('obiettivi vuoti');
+  fs.renameSync(path.join(dir, 'obiettivi.off'), path.join(dir, 'obiettivi.md'));
   // da «Altro» alla pagina con tocchi ripetuti: una sola pagina, nessun errore
   await go('#/altro');
   await waitFor('!!document.querySelector("a.row[href=\\"#/calendario\\"]")', 'voce Calendario in Altro');
