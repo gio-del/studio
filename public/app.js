@@ -692,8 +692,19 @@ function dayMap(main, s) {
     h('p', { class: 'small muted' }, 'Una colonna per settimana, lunedì in alto; più scuro = più minuti; il bordo tratteggiato è un giorno di riposo.')));
 }
 
+// «La settimana scorsa»: i numeri di /api/riassunto in una riga; senza dati (o se il riassunto non si legge) niente card.
+function lastWeekCard(r) {
+  if (!r || !(r.minutes || r.sessions || r.partsClosed || r.pendingMinutes)) return null;
+  const parts = [`${hours(r.minutes)} su ${hours(r.goalMinutes)}`, plural(r.sessions, 'sessione', 'sessioni'), `${plural(r.partsClosed, 'parte chiusa', 'parti chiuse')}`];
+  if (r.pendingMinutes) parts.push(`${hours(r.pendingMinutes)} da verificare`);
+  parts.push(`${plural(r.gapsOpen, 'lacuna aperta', 'lacune aperte')}`);
+  return h('section', { class: 'card lastweek' }, h('p', { class: 'overline' }, 'La settimana scorsa'), h('p', { class: 'small lastweek-line' }, parts.join(' · ')));
+}
+
 async function pageStatistiche(main) {
-  const s = await api('/api/stats');
+  const [s, rias] = await Promise.all([api('/api/stats'), api('/api/riassunto').catch((e) => { if (e.message === 'login') throw e; return null; })]);
+  const lw = lastWeekCard(rias);
+  if (lw) main.append(lw);
   const goal = s.goalMinutes;
   const cur = s.weeks[s.weeks.length - 1];
   const pct = Math.min(100, Math.round((100 * cur.minutes) / goal));
