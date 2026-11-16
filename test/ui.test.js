@@ -443,7 +443,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   const verOrig = fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8');
   fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig + '\n## 2020-01-02 | sistemi | Parte 1 | sessione\nEsito: parziale\nLacune:\n- [ ] scheduler <b>x</b>\n');
   await go('#/ripasso');
-  await waitFor('document.querySelectorAll("main .open section.card").length === 2 && document.querySelectorAll("button.filter").length === 3', 'ripasso con filtri');
+  try { await waitFor('document.querySelectorAll("main .open section.card").length === 2 && document.querySelectorAll("button.filter").length === 3', 'ripasso con filtri'); } catch (e) { throw new Error(e.message + ' ' + await ev('document.querySelector("main").innerText.slice(0,700)')); }
   assert.match(await ev('document.querySelector("main .open section.card").textContent'), /scheduler[\s\S]*aperta da \d+ giorni/, 'la più vecchia in alto, con l\'età');
   assert.strictEqual(await ev('document.querySelector("button.filter[data-area=\\"\\"]").getAttribute("aria-pressed")'), 'true');
   await targets('ripasso con filtri'); await noOverflow('ripasso con filtri');
