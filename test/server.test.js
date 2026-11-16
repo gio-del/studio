@@ -59,6 +59,8 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   assert.deepStrictEqual((await (await call('GET', '/api/stats', null, c)).json()).areas.map((a) => a.area), ['algoritmi', 'sistemi']);
   assert.deepStrictEqual(ov.verifyDue, [{ area: 'sistemi', title: 'Sistemi', part: 1, partTitle: 'Rete', verification: 'spiegare il percorso di un pacchetto <b>a voce</b>' }],
     'parte tutta fatta senza verifica fine: sistemi sì; algoritmi ha passi aperti e la sua verifica fine');
+  assert.deepStrictEqual(ov.focus.open.map((x) => x.minutes), [180, 60, 60, 30], 'passi aperti dell\'area di oggi con i minuti stimati');
+  assert.strictEqual(ov.focus.open[3].text.startsWith('Verifica'), true);
   assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
   assert.strictEqual(ov.streak, 1);
   const algo = ov.areas[0];
@@ -183,7 +185,7 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   const c = await login();
   let ov = await (await call('GET', '/api/overview', null, c)).json();
   assert.strictEqual(ov.date, '2026-11-09');
-  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'suggerita' }, 'senza calendario: l\'unica area con passi aperti');
+  assert.deepStrictEqual({ ...ov.focus, open: undefined }, { area: 'algoritmi', reason: 'suggerita', open: undefined }, 'senza calendario: l\'unica area con passi aperti');
   assert.deepStrictEqual(ov.areas.map((a) => a.title), ['Algoritmi', 'Sistemi']);
   assert.strictEqual(ov.areas[0].last, '2026-11-09');
   assert.strictEqual(ov.gapsTotal, 2);
@@ -191,7 +193,7 @@ test('oggi: area del calendario, altrimenti la più ferma; nomi leggibili; manif
   // il 2026-11-09 è lunedì: vale la riga di lunedì; un'area senza passi aperti o sconosciuta non diventa «oggi»
   fs.writeFileSync(path.join(dir, 'calendario.md'), '# Calendario\n- sistemi | lun | 08:00 | 30\n- inventata | lun | 08:30 | 30\n- Algoritmi | lun,gio | 19:00 | 60\n- algoritmi | mar | 07:00 | 45\n<script>\n');
   ov = await (await call('GET', '/api/overview', null, c)).json();
-  assert.deepStrictEqual(ov.focus, { area: 'algoritmi', reason: 'calendario', time: '19:00', minutes: 60, plannedToday: 120, doneToday: 120 });
+  assert.deepStrictEqual({ ...ov.focus, open: undefined }, { area: 'algoritmi', reason: 'calendario', time: '19:00', minutes: 60, plannedToday: 120, doneToday: 120, open: undefined });
   assert.deepStrictEqual(ov.later, []);
   // minuti di oggi contro quelli previsti: contano solo le righe di progressi.md di oggi, non le `fatto` in attesa
   fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 30 min\n- 2026-11-02 | algoritmi | vecchio | ok | 99 min\n');

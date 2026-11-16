@@ -112,6 +112,22 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);
   await noOverflow('oggi'); await targets('oggi');
+  // «Ho solo N minuti»: il primo passo aperto che ci sta, con le azioni di stepBody; tocchi ripetuti non ne duplicano
+  const tap = async (m) => { await ev(`(() => { const b = document.querySelector('.short [data-min="${m}"]'); b.click(); b.click(); return true; })()`); };
+  const shortOut = () => ev('document.querySelector(".short-out").textContent');
+  await tap(15);
+  assert.match(await shortOut(), /Nessun passo così corto: vai avanti con il prossimo/);
+  await tap(30);
+  assert.match(await shortOut(), /Verifica grande a tempo/);
+  assert.strictEqual(await ev('document.querySelectorAll(".short-out .short-step").length'), 1);
+  assert.ok(await ev('document.querySelectorAll(".short-out button, .short-out a").length') >= 2, 'azioni di stepBody');
+  assert.strictEqual(await ev('document.querySelectorAll(".short-out button[data-act=fatto], .short-out .done-open, .short-out button").length > 0'), true);
+  await noOverflow('oggi poco tempo'); await targets('oggi poco tempo');
+  await tap(60);
+  assert.match(await shortOut(), /Passo/);
+  assert.doesNotMatch(await shortOut(), /Verifica grande/);
+  assert.strictEqual(await ev('document.querySelectorAll(".short [aria-pressed=true]").length'), 1);
+  await noOverflow('oggi poco tempo 60'); await targets('oggi poco tempo 60');
 
   // minuti di oggi contro quelli in calendario (giorno vero del browser, senza orologio finto)
   const dayKey = ['dom', 'lun', 'mar', 'mer', 'gio', 'ven', 'sab'][new Date().getDay()];
