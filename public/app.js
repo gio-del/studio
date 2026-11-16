@@ -116,6 +116,24 @@ function bar(done, total) {
   return b;
 }
 // «Oggi: 30 di 45 min» (minuti di progressi.md contro quelli in calendario); a obiettivo raggiunto, «Fatto per oggi».
+// «Ho solo N minuti»: il primo passo aperto dell'area di oggi che ci sta (solo in pagina, nulla viene scritto).
+function shortBox(f, open) {
+  const out = h('div', { class: 'short-out' });
+  const btns = [15, 30, 60].map((m) => {
+    const b = h('button', { class: 'btn ghost', type: 'button', 'data-min': String(m), 'aria-pressed': 'false' }, `${m} min`);
+    b.addEventListener('click', () => {
+      for (const x of btns) x.setAttribute('aria-pressed', String(x === b));
+      const hit = open.find((x) => x.minutes <= m);
+      out.replaceChildren(hit
+        ? h('div', { class: 'short-step' }, h('p', { class: 'step' }, hit.text), hit.time ? h('p', { class: 'where time' }, icon('tempo'), hit.time) : null,
+          stepBody(f.area, f.title, { part: hit.part, week: hit.week, index: hit.index }, hit, null, () => route()))
+        : h('p', { class: 'small short-none' }, 'Nessun passo così corto: vai avanti con il prossimo'));
+    });
+    return b;
+  });
+  return h('div', { class: 'short', role: 'group', 'aria-label': 'Poco tempo' }, h('div', { class: 'small muted' }, 'Ho solo…'), h('div', { class: 'chips' }, btns), out);
+}
+
 function todayLine(focus) {
   if (focus.reason !== 'calendario' || !(focus.plannedToday > 0)) return null;
   const done = focus.doneToday || 0;
@@ -388,6 +406,7 @@ async function pageOggi(main) {
       n.time ? h('p', { class: 'where time' }, icon('tempo'), n.time) : null,
       todayLine(o.focus),
       o.missedYesterday ? h('p', { class: 'small missed' }, `Ieri: ${areaName(o.missedYesterday.area, Object.fromEntries(o.areas.map((x) => [x.area, x.title])))}, ${o.missedYesterday.minutes} min non fatti`) : null,
+      shortBox(f, o.focus.open || []),
       stepBody(f.area, f.title, { part: n.part, week: n.week, index: n.index }, n, o.session, () => route()),
       h('a', { class: 'more-link', href: areaHref(f.area) }, 'Tutto il programma dell’area', icon('avanti'))));
   } else {

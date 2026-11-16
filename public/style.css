@@ -275,3 +275,8 @@ details.week > summary { font-size: .9375rem; }
 .how p { margin: 0 0 var(--s2); }
 .how .tutor { margin-top: 0; }
 @media (max-width: 359px) { .tabs a { font-size: .6875rem; } }
+
+.short { margin: 0 0 var(--s3); }
+.short .chips { margin-top: var(--s2); }
+.short .btn[aria-pressed="true"] { background: var(--surface-2); border-color: var(--primary); }
+.short-out:not(:empty) { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }

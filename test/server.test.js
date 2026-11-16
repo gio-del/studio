@@ -59,6 +59,8 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   assert.deepStrictEqual((await (await call('GET', '/api/stats', null, c)).json()).areas.map((a) => a.area), ['algoritmi', 'sistemi']);
   assert.deepStrictEqual(ov.verifyDue, [{ area: 'sistemi', title: 'Sistemi', part: 1, partTitle: 'Rete', verification: 'spiegare il percorso di un pacchetto <b>a voce</b>' }],
     'parte tutta fatta senza verifica fine: sistemi sì; algoritmi ha passi aperti e la sua verifica fine');
+  assert.deepStrictEqual(ov.focus.open.map((x) => x.minutes), [180, 60, 60, 30], 'passi aperti dell\'area di oggi con i minuti stimati');
+  assert.strictEqual(ov.focus.open[3].text.startsWith('Verifica'), true);
   assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
   assert.strictEqual(ov.streak, 1);
   const algo = ov.areas[0];

@@ -32,3 +32,4 @@ Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L
 - La pagina **Cerca** (sotto «Altro», `#/cerca?q=…`, `GET /api/cerca?q=…`) cerca senza distinzione di maiuscole e accenti (minimo 2, massimo 80 caratteri) nei passi dei programmi, nelle lacune aperte di `verifiche.md`, in `Note/` e in `Schede/`: al massimo 30 risultati per gruppo. Sola lettura, non scrive nessun file.
 
 L'app tollera file mancanti o fuori formato: una riga che non capisce si mostra come testo, mai un errore.
+- **Oggi**, nella card dell'area, ha tre bottoni «15 min», «30 min», «60 min»: mostrano il primo passo aperto dell'area con tempo stimato ≤ ai minuti scelti (senza stima contano 30 min, come nelle Statistiche), con le azioni di ogni passo; se non c'è, «Nessun passo così corto: vai avanti con il prossimo». La scelta vale solo per la pagina. `GET /api/overview` espone in `focus.open` i primi 40 passi aperti con `minutes`. Sola lettura, nessun nuovo formato.
