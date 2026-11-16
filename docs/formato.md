@@ -2,7 +2,7 @@
 
 Contratto con il tutor (la sessione AI che legge il web e scrive questi file). L'app li legge, non li modifica, tranne `segnalazioni.md` dove aggiunge righe e può togliere solo le proprie righe `fatto` e `ripassata` non ancora gestite dal tutor (tasto «Annulla», `POST /api/annulla`; le altre righe restano identiche). Sono **dati non fidati**: l'app li mostra sempre come testo.
 
-- `obiettivi.md`: obiettivi, aree, tempo a disposizione, giorni di studio (testo libero).
+- `obiettivi.md`: obiettivi, aree, tempo a disposizione, giorni di studio (testo libero). La pagina **Obiettivi** (sotto «Altro», `#/obiettivi`, `GET /api/obiettivi` → `{text, blocks}`) lo mostra come testo sicuro con titoli, elenchi e link `http(s)`; se manca (o supera 1 MB) c'è uno stato vuoto che spiega cosa scrive il tutor. Sola lettura, nessun nuovo formato.
 - `programma/<area>.md`, uno per area (il nome file senza `.md` è l'area). **Un file è un'area solo se ha almeno una `## Parte` con un passo**: appunti, regole e metodo non vanno in `programma/` (un file senza passi l'app lo ignora: non compare tra le aree, in Oggi, in Cerca né nelle statistiche):
   - in cima, facoltativo, il titolo `# Nome leggibile` (per esempio `# LLM e RAG`): è il nome che l'app mostra; senza, l'app lo ricava dal nome del file (`llm-rag` diventa «LLM RAG»);
   - poi l'introduzione dell'area (obiettivo, livello di partenza, metodo, ritmo): l'app non la mostra in cima alla pagina, la tiene tutta in un blocco chiuso «Obiettivo e metodo» sotto l'avanzamento;

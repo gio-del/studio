@@ -37,6 +37,7 @@ const ICONS = {
   libro: [['path', { d: 'M5 4h13a1 1 0 0 1 1 1v15H7a2 2 0 0 1-2-2zM5 18a2 2 0 0 1 2-2h12' }]],
   tutor: [['path', { d: 'M4 5h16v11H9l-5 4z' }]],
   esci: [['path', { d: 'M10 4H5v16h5M14 8l4 4-4 4M18 12H9' }]],
+  obiettivi: [['circle', { cx: 12, cy: 12, r: 9 }], ['circle', { cx: 12, cy: 12, r: 5 }], ['circle', { cx: 12, cy: 12, r: 1 }]],
   calendario: [['rect', { x: 4, y: 5, width: 16, height: 15, rx: 2 }], ['path', { d: 'M4 10h16M8 3v4M16 3v4' }]],
   codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
   cerca: [['circle', { cx: 11, cy: 11, r: 6.5 }], ['path', { d: 'M16 16l5 5' }]],
@@ -838,6 +839,13 @@ async function pageCerca(main, q) {
   await run();
 }
 
+async function pageObiettivi(main) {
+  const { blocks: bl } = await api('/api/obiettivi');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Obiettivi'));
+  main.append(bl.length ? h('section', { class: 'card prose' }, listOf(bl))
+    : empty('obiettivi', 'Nessun obiettivo ancora', 'Il tutor scrive qui perché studi: gli obiettivi, le aree, il tempo a disposizione e i giorni di studio.'));
+}
+
 async function pageCalendario(main) {
   const { days } = await api('/api/calendario');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
@@ -860,6 +868,7 @@ async function pageAltro(main) {
     item('#/come-funziona', 'aiuto', 'Come funziona', 'App, tutor, note e ripasso in un minuto'),
     item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note e schede'),
     item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
+    item('#/obiettivi', 'obiettivi', 'Obiettivi', 'Perché studi e quanto tempo hai'),
     item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
     item('#/feedback', 'segnala', 'Segnalazioni', f.open.length ? `${plural(f.open.length, 'aperta', 'aperte')}` : 'Cosa hai segnalato e cosa ha cambiato il tutor')),
@@ -887,7 +896,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', feedback: 'altro', cerca: 'altro', 'come-funziona': 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', obiettivi: 'altro', feedback: 'altro', cerca: 'altro', 'come-funziona': 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -926,6 +935,7 @@ async function route() {
     else if (known === 'andamento') await pageAndamento(main, arg);
     else if (known === 'cerca') await pageCerca(main, new URLSearchParams(query).get('q') || '');
     else if (known === 'calendario') await pageCalendario(main);
+    else if (known === 'obiettivi') await pageObiettivi(main);
     else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);
     else if (known === 'feedback') await pageFeedback(main);
