@@ -477,6 +477,18 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   }
   assert.strictEqual(await ev('document.querySelectorAll("section.cal-day").length'), 7, 'sette giorni');
   assert.strictEqual(await ev('document.querySelectorAll("section.cal-day.is-today").length'), 1, 'un solo oggi');
+  // riepilogo della settimana in cima, prima dei giorni: previsto sotto l'obiettivo = avviso
+  assert.strictEqual(await ev('document.querySelector("main section.cal-week").nextElementSibling === document.querySelector("section.cal-day")'), true, 'scheda prima dei giorni');
+  assert.match(await ev('document.querySelector("section.cal-week").textContent'), /Settimana: \d+ di 105 min previsti.*Obiettivo: 420 min.*Il calendario prevede 315 min in meno dell'obiettivo/);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-week .bar").length'), 1);
+  // calendario vuoto: solo i minuti fatti e l'obiettivo, senza barra né avviso
+  fs.renameSync(path.join(dir, 'calendario.md'), path.join(dir, 'calendario.off'));
+  await go('#/altro'); await go('#/calendario');
+  await waitFor('!!document.querySelector("section.cal-week")', 'riepilogo senza calendario');
+  assert.match(await ev('document.querySelector("section.cal-week").textContent'), /^Settimana: \d+ min fattiObiettivo: 420 min$/);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-week .bar, section.cal-week .cal-short").length'), 0);
+  await noOverflow('calendario vuoto'); await targets('calendario vuoto');
+  fs.renameSync(path.join(dir, 'calendario.off'), path.join(dir, 'calendario.md'));
   // Obiettivi: file mancante = stato vuoto
   fs.renameSync(path.join(dir, 'obiettivi.md'), path.join(dir, 'obiettivi.off'));
   await go('#/altro'); await go('#/obiettivi');

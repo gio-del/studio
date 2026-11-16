@@ -896,8 +896,13 @@ async function pageObiettivi(main) {
 }
 
 async function pageCalendario(main) {
-  const { days } = await api('/api/calendario');
+  const { days, weekPlanned, weekDone, goalMinutes } = await api('/api/calendario');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
+  const short = goalMinutes - weekPlanned;
+  main.append(h('section', { class: 'card cal-week' },
+    weekPlanned ? [h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} di ${weekPlanned} min previsti`), bar(weekDone, weekPlanned)] : h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} min fatti`),
+    h('p', { class: 'small muted' }, `Obiettivo: ${goalMinutes} min`),
+    weekPlanned && short > 0 ? h('p', { class: 'small cal-short' }, `Il calendario prevede ${short} min in meno dell'obiettivo`) : null));
   for (const d of days) {
     const dd = d.date.split('-');
     const head = h('div', { class: 'top' }, h('h2', null, `${GIORNO[d.day] || d.day} ${Number(dd[2])} ${MESI[Number(dd[1]) - 1] || ''}`), d.today ? chip('Oggi', 'pri') : null);

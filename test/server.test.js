@@ -466,10 +466,13 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   assert.strictEqual(r.days[0].done, 45);
   assert.strictEqual(r.days[1].items.length, 0);
   assert.strictEqual(r.days[6].items[0].area, null);
+  assert.deepStrictEqual([r.weekPlanned, r.weekDone, r.goalMinutes], [195, 45, 420]);
   fs.writeFileSync(path.join(dir, 'calendario.md'), '\u0000 niente di valido\n');
   const e = await call('GET', '/api/calendario', null, c);
   assert.strictEqual(e.status, 200);
-  assert.ok((await e.json()).days.every((d) => d.items.length === 0));
+  const ej = await e.json();
+  assert.ok(ej.days.every((d) => d.items.length === 0));
+  assert.deepStrictEqual([ej.weekPlanned, ej.weekDone, ej.goalMinutes], [0, 45, 420]);
   fs.rmSync(path.join(dir, 'calendario.md'));
   assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
 });
