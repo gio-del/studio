@@ -218,6 +218,8 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .wrow .bar { margin: 0; height: 12px; }
 .wrow .count { min-width: 58px; text-align: right; }
 /* Calendario */
+.cal-week p { margin: 0 0 var(--s2); }
+.cal-week .cal-week-line { font-weight: 600; }
 .cal-day h2 { margin: 0; }
 .cal-day .top { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); margin-bottom: var(--s2); }
 .cal-day.is-today { border-color: var(--primary); background: var(--primary-soft); }
