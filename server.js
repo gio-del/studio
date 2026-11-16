@@ -11,9 +11,10 @@ const FILES = {
   '/': ['index.html', 'text/html; charset=utf-8'], '/app.js': ['app.js', 'text/javascript; charset=utf-8'], '/style.css': ['style.css', 'text/css; charset=utf-8'],
   '/manifest.webmanifest': ['manifest.webmanifest', 'application/manifest+json; charset=utf-8'], '/icon.svg': ['icon.svg', 'image/svg+xml'],
   '/icon-180.png': ['icon-180.png', 'image/png'], '/icon-192.png': ['icon-192.png', 'image/png'], '/icon-512.png': ['icon-512.png', 'image/png'],
+  '/sw.js': ['sw.js', 'text/javascript; charset=utf-8'],
 };
 const HEADERS = {
-  'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; manifest-src 'self'; worker-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
   'cache-control': 'no-store',
@@ -192,7 +193,7 @@ function createServer({ config, now = Date.now }) {
       if (p.startsWith('/api/')) return await api(req, res, p);
       const f = FILES[p];
       if (!f || (req.method !== 'GET' && req.method !== 'HEAD')) return send(res, 404, 'Non trovato', { 'content-type': 'text/plain; charset=utf-8' });
-      return send(res, 200, fs.readFileSync(path.join(publicDir, f[0])), { 'content-type': f[1] });
+      return send(res, 200, fs.readFileSync(path.join(publicDir, f[0])), { 'content-type': f[1], ...(p === '/sw.js' ? { 'cache-control': 'no-cache', 'service-worker-allowed': '/' } : {}) });
     } catch (e) {
       return send(res, e.status || 500, { error: e.status ? e.message : 'Errore interno' });
     }
