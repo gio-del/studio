@@ -439,6 +439,32 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await ev('[...document.querySelectorAll("main .open section.card")].find((c) => /ricorsione/.test(c.textContent)).querySelector("button").click()');
   await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && /ricorsione/.test(document.querySelector("main .waiting section.card").textContent)', 'lacuna di nuovo in attesa');
 
+  // Filtro per area nel Ripasso: età, un tocco per area, tocchi ripetuti, Ripassata/Annulla col filtro, badge sempre totale
+  const verOrig = fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8');
+  fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig + '\n## 2020-01-02 | sistemi | Parte 1 | sessione\nEsito: parziale\nLacune:\n- [ ] scheduler <b>x</b>\n');
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 3 && document.querySelectorAll("button.filter").length === 3', 'ripasso con filtri');
+  assert.match(await ev('document.querySelector("main .open section.card").textContent'), /scheduler[\s\S]*aperta da \d+ giorni/, 'la più vecchia in alto, con l\'età');
+  assert.strictEqual(await ev('document.querySelector("button.filter[data-area=\\"\\"]").getAttribute("aria-pressed")'), 'true');
+  await targets('ripasso con filtri'); await noOverflow('ripasso con filtri');
+  const fsis = 'document.querySelector("button.filter[data-area=sistemi]")';
+  await ev('(() => { const b = ' + fsis + '; b.click(); b.click(); b.click(); })()');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 1', 'filtro sistemi');
+  assert.strictEqual(await ev(fsis + '.getAttribute("aria-pressed")'), 'true');
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '3', 'il badge conta tutte');
+  assert.strictEqual(await ev('document.querySelectorAll("main script, main b").length'), 0);
+  await ev('document.querySelector("main .open section.card button").click()');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && document.querySelectorAll("main .open section.card").length === 0', 'Ripassata col filtro');
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '2');
+  await ev('document.querySelector("main .waiting [data-act=annulla]").click()');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 1', 'Annulla col filtro');
+  assert.strictEqual(await ev('document.querySelector("#nav .badge").textContent'), '3');
+  await ev('document.querySelector("button.filter[data-area=\\"\\"]").click()');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 3', 'filtro Tutte');
+  await noOverflow('ripasso filtrato');
+  fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig);
+  assert.deepStrictEqual(fs.readdirSync(dir).sort(), [...before, 'segnalazioni.md'].sort(), 'il filtro non scrive file');
+
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/obiettivi', 'main section.card', /(?=[\s\S]*7 ore a settimana <b>x<\/b>)/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);

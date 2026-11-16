@@ -152,6 +152,7 @@ test('verifiche e lacune: storico, lacune aperte dalla più vecchia, conteggio p
   assert.strictEqual(v.rows.length, 3);
   const l = await (await call('GET', '/api/lacune', null, ck)).json();
   assert.deepStrictEqual(l.gaps.map((g) => g.date), ['2026-11-05', '2026-11-08']);
+  assert.deepStrictEqual(l.gaps.map((g) => g.ageDays), [4, 1], 'età in giorni da oggi (9 nov)');
   assert.deepStrictEqual(l.perArea, { algoritmi: 2 });
   assert.deepStrictEqual(l.weak.map((w) => [w.area, w.total, w.open]), [['algoritmi', 3, 2]]);
   const o = await (await call('GET', '/api/overview', null, ck)).json();

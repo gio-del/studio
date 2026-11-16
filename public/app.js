@@ -585,7 +585,8 @@ function listOf(bl) {
 // «Ripassata»: scrive una riga che il tutor gestisce; la lacuna passa subito «in attesa del tutor». Un invio solo.
 function gapCard(g, titles, onSent, onUndo) {
   const card = h('section', { class: 'card entry' },
-    h('div', { class: 'top' }, when(g.date), chip(areaName(g.area, titles), 'pri'), g.part ? chip(g.part) : null), h('p', { class: 'what' }, g.text));
+    h('div', { class: 'top' }, when(g.date), chip(areaName(g.area, titles), 'pri'), g.part ? chip(g.part) : null), h('p', { class: 'what' }, g.text),
+    Number.isInteger(g.ageDays) ? h('p', { class: 'small muted age' }, g.ageDays === 0 ? 'aperta da oggi' : g.ageDays === 1 ? 'aperta da ieri' : `aperta da ${g.ageDays} giorni`) : null);
   if (!onSent) {
     card.append(h('div', { class: 'chips' }, chip('In attesa del tutor', 'ok')));
     if (onUndo) {
@@ -630,30 +631,49 @@ function weakSection(weak, titles) {
 async function pageRipasso(main, onlyArea = '') {
   const data = await api('/api/lacune');
   const { waiting: allWaiting = [], titles } = data;
-  const gaps = onlyArea ? data.gaps.filter((g) => g.area === onlyArea) : data.gaps;
-  const waiting = onlyArea ? allWaiting.filter((g) => g.area === onlyArea) : allWaiting;
+  const inArea = (g) => !onlyArea || g.area === onlyArea;
+  // Elenchi di lavoro: una «Ripassata» sposta la lacuna da `openL` a `waitL`, «Annulla» la riporta (stesso ordine del server).
+  let openL = data.gaps.filter(inArea);
+  let waitL = allWaiting.filter(inArea);
+  const rest = data.gaps.length - openL.length;
   setBadge(data.gaps.length);
   main.append(h('h1', null, onlyArea ? `Da ripassare: ${areaName(onlyArea, titles)}` : 'Da ripassare'));
   if (onlyArea) main.append(h('a', { class: 'btn ghost', 'data-act': 'tutte', href: '#/ripasso' }, 'Tutte le aree'));
   else { const ws = weakSection(data.weak || [], titles); if (ws) main.append(ws); }
-  if (!gaps.length && !waiting.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
-  main.append(h('p', { class: 'muted' }, 'Cose da rivedere emerse nelle verifiche. Ripassata una, tocca «Ripassata».'));
+  if (!openL.length && !waitL.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
+  main.append(h('p', { class: 'muted' }, 'Cose da rivedere emerse nelle verifiche, dalla più vecchia. Ripassata una, tocca «Ripassata».'));
+  // Filtro per area: solo se le lacune aperte stanno in almeno 2 aree; vale per la pagina, non scrive nulla.
+  const areas = onlyArea ? [] : [...new Set(data.gaps.map((g) => g.area))];
+  let sel = '';
+  const bar = h('div', { class: 'filters', role: 'group', 'aria-label': 'Filtra per area' });
   const wait = h('div', { class: 'waiting' });
   const open = h('div', { class: 'open' });
   const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
-  const sync = () => { wtitle.hidden = !wait.children.length; setBadge(open.children.length + (onlyArea ? data.gaps.length - gaps.length : 0)); };
-  const addOpen = (g) => {
-    const card = gapCard(g, titles, () => { card.remove(); addWait(g); sync(); });
-    open.append(card);
+  const same = (g, x) => g.area === x.area && g.text === x.text && g.date === x.date;
+  const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const draw = () => {
+    open.replaceChildren(); wait.replaceChildren();
+    for (const g of openL) if (!sel || g.area === sel) {
+      const card = gapCard(g, titles, () => { waitL.push(g); openL = openL.filter((x) => !same(x, g)); draw(); toast('Segnato: il tutor chiude la lacuna alla prossima sessione'); });
+      open.append(card);
+    }
+    for (const g of waitL) if (!sel || g.area === sel) {
+      wait.append(gapCard(g, titles, null, () => { openL.push(g); openL.sort(byDate); waitL = waitL.filter((x) => !same(x, g)); draw(); }));
+    }
+    wtitle.hidden = !wait.children.length;
+    setBadge(openL.length + rest);
+    for (const b of bar.children) b.setAttribute('aria-pressed', String((b.dataset.area || '') === sel));
   };
-  const addWait = (g) => {
-    const card = gapCard(g, titles, null, () => { card.remove(); addOpen(g); sync(); });
-    wait.append(card);
-  };
-  for (const g of gaps) addOpen(g);
-  for (const g of waiting) addWait(g);
+  if (areas.length >= 2) {
+    for (const a of ['', ...areas]) {
+      const b = h('button', { class: 'btn ghost filter', type: 'button', 'data-area': a, 'aria-pressed': 'false' }, a ? areaName(a, titles) : 'Tutte');
+      b.addEventListener('click', () => { sel = a; draw(); });
+      bar.append(b);
+    }
+    main.append(bar);
+  }
   main.append(open, wtitle, wait);
-  sync();
+  draw();
 }
 
 const DIFF = { Easy: 'Facile', Medium: 'Media', Hard: 'Difficile' };
