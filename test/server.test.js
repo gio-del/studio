@@ -99,7 +99,7 @@ test('statistiche: ore per settimana, per area, verifiche superate', async (t) =
   assert.strictEqual(st.days['2026-11-09'], 120, 'più righe dello stesso giorno si sommano');
   assert.strictEqual(st.days['2026-11-02'], 45);
   assert.strictEqual(st.days['2026-11-03'], undefined, 'senza minuti: vuoto');
-  assert.strictEqual(st.days['2026-09-01'], undefined, 'prima delle 12 settimane');
+  assert.strictEqual(st.days['2026-09-01'], 60, 'dentro le 12 settimane');
   assert.ok(Object.keys(st.days).every((d) => d <= st.today), 'niente futuro');
   assert.strictEqual(st.weeks.reduce((n, w) => n + w.minutes, 0), 165, 'la riga di settembre è fuori dalle 8 settimane');
   const algo = st.areas.find((a) => a.area === 'algoritmi');
