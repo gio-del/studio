@@ -394,6 +394,15 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("main script").length'), 0);
   await noOverflow('ripasso');
   assert.strictEqual(await current(), 'Ripasso');
+  assert.match(await ev('document.querySelector("section.weak").textContent'), /Da rinforzare[\s\S]*3 lacune, 2 aperte/);
+  assert.strictEqual(await ev('document.querySelector("section.weak a[data-act=rinforza]").getBoundingClientRect().height >= 43.5'), true);
+  await ev('document.querySelector("section.weak a[data-act=rinforza]").click()');
+  await waitFor('location.hash.startsWith("#/ripasso?area=") && !!document.querySelector("a[data-act=tutte]")', 'ripasso mirato');
+  assert.strictEqual(await ev('document.querySelectorAll("main section.card").length'), 2, 'le lacune dell\'area scelta');
+  assert.strictEqual(await ev('!!document.querySelector("section.weak")'), false);
+  await noOverflow('ripasso mirato');
+  await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main section.card").length === 2', 'ripasso di nuovo');
   await go('#/oggi');
   await waitFor('!!document.querySelector("a.gaplink")', 'lacune su Oggi');
   assert.strictEqual(await ev('document.querySelector("a.gaplink").getBoundingClientRect().height >= 43.5'), true);

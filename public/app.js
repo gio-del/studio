@@ -614,16 +614,34 @@ function gapCard(g, titles, onSent, onUndo) {
   return card;
 }
 
-async function pageRipasso(main) {
-  const { gaps, waiting = [], titles } = await api('/api/lacune');
-  setBadge(gaps.length);
-  main.append(h('h1', null, 'Da ripassare'));
+// «Da rinforzare»: le aree dove le verifiche lasciano più lacune; il tasto apre il ripasso di quell'area sola.
+function weakSection(weak, titles) {
+  if (!weak.length) return null;
+  const sec = h('section', { class: 'weak', 'aria-label': 'Da rinforzare' }, h('h2', null, 'Da rinforzare'),
+    h('p', { class: 'small muted' }, 'Le aree dove le verifiche lasciano più lacune, quelle ancora aperte contano il doppio.'));
+  for (const w of weak) {
+    sec.append(h('div', { class: 'weakrow' },
+      h('div', { class: 'grow' }, h('strong', null, areaName(w.area, titles)), h('span', { class: 'small muted' }, ` ${plural(w.total, 'lacuna', 'lacune')}, ${w.open} aperte`)),
+      h('a', { class: 'btn ghost', 'data-act': 'rinforza', href: `#/ripasso?area=${encodeURIComponent(w.area)}` }, 'Ripassa')));
+  }
+  return sec;
+}
+
+async function pageRipasso(main, onlyArea = '') {
+  const data = await api('/api/lacune');
+  const { waiting: allWaiting = [], titles } = data;
+  const gaps = onlyArea ? data.gaps.filter((g) => g.area === onlyArea) : data.gaps;
+  const waiting = onlyArea ? allWaiting.filter((g) => g.area === onlyArea) : allWaiting;
+  setBadge(data.gaps.length);
+  main.append(h('h1', null, onlyArea ? `Da ripassare: ${areaName(onlyArea, titles)}` : 'Da ripassare'));
+  if (onlyArea) main.append(h('a', { class: 'btn ghost', 'data-act': 'tutte', href: '#/ripasso' }, 'Tutte le aree'));
+  else { const ws = weakSection(data.weak || [], titles); if (ws) main.append(ws); }
   if (!gaps.length && !waiting.length) { main.append(empty('fatto', 'Nessuna lacuna aperta', 'Quando una verifica lascia qualcosa da rivedere, lo trovi qui.')); return; }
   main.append(h('p', { class: 'muted' }, 'Cose da rivedere emerse nelle verifiche. Ripassata una, tocca «Ripassata».'));
   const wait = h('div', { class: 'waiting' });
   const open = h('div', { class: 'open' });
   const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
-  const sync = () => { wtitle.hidden = !wait.children.length; setBadge(open.children.length); };
+  const sync = () => { wtitle.hidden = !wait.children.length; setBadge(open.children.length + (onlyArea ? data.gaps.length - gaps.length : 0)); };
   const addOpen = (g) => {
     const card = gapCard(g, titles, () => { card.remove(); addWait(g); sync(); });
     open.append(card);
@@ -942,7 +960,7 @@ async function route() {
   try {
     if (known === 'area') await pageArea(main, decodeURIComponent(arg || ''));
     else if (known === 'programma') await pageProgramma(main);
-    else if (known === 'ripasso') await pageRipasso(main);
+    else if (known === 'ripasso') await pageRipasso(main, new URLSearchParams(query).get('area') || '');
     else if (known === 'andamento') await pageAndamento(main, arg);
     else if (known === 'cerca') await pageCerca(main, new URLSearchParams(query).get('q') || '');
     else if (known === 'calendario') await pageCalendario(main);

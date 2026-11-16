@@ -252,3 +252,14 @@ test('parser: tempo reale contro stimato per passo', () => {
   assert.deepStrictEqual([d.compared, d.real, d.estimated, d.ratio], [1, 45, 60, 0.75]);
   assert.deepStrictEqual(P.compareTime([], prog), { compared: 0, real: 0, estimated: 0, ratio: null });
 });
+
+test('weakAreas: ordine per punteggio, aree senza storico escluse, al massimo 5', () => {
+  const v = (area, ...open) => ({ area, gaps: open.map((o) => ({ open: o, text: 'x' })) });
+  const rows = [v('sistemi', true, false), v('ml', false, false, false), v('llm', true), v('vuota'), v('dati', true), v('hw', true), v('algo', true), v('', true)];
+  const w = P.weakAreas(rows);
+  // sistemi 2+1=3, ml 3+0=3 (meno aperte: dopo), le altre 1+1=2 in ordine di nome
+  assert.deepStrictEqual(w.map((x) => x.area), ['sistemi', 'ml', 'algo', 'dati', 'hw']);
+  assert.deepStrictEqual(w[0], { area: 'sistemi', total: 2, open: 1, score: 3 });
+  assert.ok(!P.weakAreas(rows, 10).some((x) => x.area === 'vuota' || x.area === ''));
+  assert.deepStrictEqual(P.weakAreas([]), []);
+});
