@@ -263,3 +263,13 @@ test('weakAreas: ordine per punteggio, aree senza storico escluse, al massimo 5'
   assert.ok(!P.weakAreas(rows, 10).some((x) => x.area === 'vuota' || x.area === ''));
   assert.deepStrictEqual(P.weakAreas([]), []);
 });
+
+test('ageDays: giorni da una data, null se impossibile, 0 se futura', () => {
+  const today = Date.UTC(2026, 10, 16);
+  assert.strictEqual(P.ageDays('2026-11-16', today), 0);
+  assert.strictEqual(P.ageDays('2026-11-15', today), 1);
+  assert.strictEqual(P.ageDays('2026-10-31', today), 16);
+  assert.strictEqual(P.ageDays('2026-13-45', today), null);
+  assert.strictEqual(P.ageDays('boh', today), null);
+  assert.strictEqual(P.ageDays('2026-11-20', today), 0);
+});
