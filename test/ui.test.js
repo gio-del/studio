@@ -440,6 +440,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelectorAll("main .waiting section.card").length === 1 && /ricorsione/.test(document.querySelector("main .waiting section.card").textContent)', 'lacuna di nuovo in attesa');
 
   // Filtro per area nel Ripasso: età, un tocco per area, tocchi ripetuti, Ripassata/Annulla col filtro, badge sempre totale
+  const filesBefore = fs.readdirSync(dir).sort();
   const verOrig = fs.readFileSync(path.join(dir, 'verifiche.md'), 'utf8');
   fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig + '\n## 2020-01-02 | sistemi | Parte 1 | sessione\nEsito: parziale\nLacune:\n- [ ] scheduler <b>x</b>\n');
   await go('#/oggi'); await go('#/ripasso');
@@ -463,7 +464,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('document.querySelectorAll("main .open section.card").length === 2', 'filtro Tutte');
   await noOverflow('ripasso filtrato');
   fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig);
-  assert.deepStrictEqual(fs.readdirSync(dir).sort(), [...before, 'segnalazioni.md'].sort(), 'il filtro non scrive file');
+  assert.deepStrictEqual(fs.readdirSync(dir).sort(), filesBefore, 'il filtro non scrive file');
 
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/obiettivi', 'main section.card', /(?=[\s\S]*7 ore a settimana <b>x<\/b>)/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
