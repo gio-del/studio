@@ -456,6 +456,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.match(await text(), /Questa settimana/);
   assert.match(await text(), /Ore per settimana/);
   assert.strictEqual(await ev('document.querySelectorAll("main [style]").length >= 0 && document.querySelectorAll(".weeks:not(.lc) .bar").length'), 8);
+  assert.strictEqual(await ev('document.querySelectorAll(".daymap .dm").length'), 84);
+  assert.match(await ev('document.querySelector(".daymap .dm.l4, .daymap .dm.l3, .daymap .dm.l2, .daymap .dm.l1").getAttribute("aria-label")'), /^(lun|mar|mer|gio|ven|sab|dom) \d+ [a-z]{3}: \d+ min/);
   assert.strictEqual(await current(), 'Andamento');
   assert.strictEqual(await ev('document.querySelectorAll(".seg a").length'), 3);
   assert.match(await text(), /(Al ritmo delle ultime 4 settimane: circa \d+ settimane? alla fine|Ritmo troppo basso per stimare)/);

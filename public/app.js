@@ -670,6 +670,28 @@ function leetcodeWeeks(main, s) {
     h('a', { class: 'btn ghost', href: '#/leetcode' }, icon('codice'), 'Apri LeetCode'));
 }
 
+// Mappa dei giorni: 12 settimane (colonne, la più vecchia a sinistra) × 7 giorni (righe, lunedì-domenica), 4 livelli.
+function dayMap(main, s) {
+  const GG = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'], KEY = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
+  const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  const day = (iso) => new Date(`${iso}T00:00:00Z`);
+  const add = (iso, n) => { const t = day(iso); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+  const days = s.days || {}, rest = s.restDays || [];
+  const first = add(s.weeks[s.weeks.length - 1].start, -77);
+  const level = (m) => (m <= 0 ? 0 : m < 30 ? 1 : m < 60 ? 2 : m < 90 ? 3 : 4);
+  const grid = h('div', { class: 'daymap', role: 'list', 'aria-label': 'Minuti per giorno, ultime 12 settimane' });
+  for (let w = 0; w < 12; w++) for (let d = 0; d < 7; d++) {
+    const iso = add(first, w * 7 + d);
+    if (iso > s.today) { grid.append(h('span', { class: 'dm none', 'aria-hidden': 'true' })); continue; }
+    const m = days[iso] || 0, t = day(iso);
+    const isRest = rest.includes(KEY[d]);
+    const label = `${GG[d]} ${t.getUTCDate()} ${MESI[t.getUTCMonth()]}: ${m} min${isRest ? ', riposo' : ''}`;
+    grid.append(h('span', { class: `dm l${level(m)}${isRest ? ' rest' : ''}`, role: 'listitem', 'aria-label': label, title: label }));
+  }
+  main.append(h('h2', null, 'Giorni studiati'), h('div', { class: 'card' }, grid,
+    h('p', { class: 'small muted' }, 'Una colonna per settimana, lunedì in alto; più scuro = più minuti; il bordo tratteggiato è un giorno di riposo.')));
+}
+
 async function pageStatistiche(main) {
   const s = await api('/api/stats');
   const goal = s.goalMinutes;
@@ -690,6 +712,7 @@ async function pageStatistiche(main) {
       h('span', { class: 'count' }, hours(w.minutes))));
   }
   main.append(wk);
+  dayMap(main, s);
   main.append(h('h2', null, 'Per area'));
   const list = h('div', { class: 'list' });
   for (const a of s.areas) {
