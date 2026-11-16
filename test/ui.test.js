@@ -499,10 +499,11 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
   await sleep(300);
   assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 1, 'tocchi ripetuti: una sola card');
-  fs.writeFileSync(path.join(dir, 'progressi.md'), progBak);
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-01-05 | algoritmi | vecchio | ok | 30 min\n');
   await go('#/oggi'); await go('#/andamento/statistiche');
   await waitFor('!!document.querySelector(".stat-hero")', 'statistiche senza la card');
   assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 0, 'dati tolti: la card sparisce');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), progBak);
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
