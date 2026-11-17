@@ -370,6 +370,15 @@ function cardsDue(list) {
   return sec;
 }
 
+// Ultima sessione registrata: «ieri», «3 giorni fa»; da 4 giorni in su un avviso. Senza sessioni niente riga.
+function lastSessionLine(ls, areas) {
+  if (!ls || !Number.isInteger(ls.days) || ls.days < 0) return null;
+  if (ls.days >= 4) return h('div', { class: 'small missed', 'data-last-session': 'stale' }, `Nessuna sessione da ${ls.days} giorni`);
+  const titles = Object.fromEntries((areas || []).map((x) => [x.area, x.title]));
+  const when = ls.days === 0 ? 'oggi' : ls.days === 1 ? 'ieri' : `${ls.days} giorni fa`;
+  return h('div', { class: 'small muted', 'data-last-session': 'ok' }, `Ultima sessione: ${when}${ls.area ? ` (${areaName(ls.area, titles)})` : ''}`);
+}
+
 // Oggi: una cosa sola. Prima le lacune da ripassare, poi il passo dell'area di oggi, sotto le altre aree.
 async function pageOggi(main) {
   const o = await api('/api/overview');
@@ -382,7 +391,8 @@ async function pageOggi(main) {
     main.append(h('div', { class: 'weekline', role: 'group', 'aria-label': 'La tua settimana' },
       h('div', { class: 'small' }, h('strong', null, 'Questa settimana: '), `${wm ? hours(wm) : '0 h'} di ${hours(o.week.goalMinutes)}`),
       bar(wm, o.week.goalMinutes),
-      h('div', { class: 'small muted' }, `Giorni di studio di fila: ${days}`)));
+      h('div', { class: 'small muted' }, `Giorni di studio di fila: ${days}`),
+      lastSessionLine(o.lastSession, o.areas)));
   }
   if (!o.areas.length) { main.append(empty('programma', 'Nessun programma ancora', 'Il tutor lo crea alla prima sessione.'), tutorLine(o.session), h('a', { class: 'more-link', href: '#/come-funziona' }, 'Come funziona Studio', icon('avanti'))); return; }
   if (o.gapsTotal) {

@@ -63,6 +63,7 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   assert.strictEqual(ov.focus.open[3].text.startsWith('Verifica'), true);
   assert.deepStrictEqual(ov.week, { minutes: 120, goalMinutes: 420 }, 'minuti della settimana in corso (lun 9 nov)');
   assert.strictEqual(ov.streak, 1);
+  assert.deepStrictEqual(ov.lastSession, { date: '2026-11-09', area: 'sistemi', days: 0 }, 'riga più recente (a parità di data l\'ultima del file)');
   const algo = ov.areas[0];
   assert.deepStrictEqual([algo.done, algo.total, algo.week, algo.next.text], [1, 5, 1, 'Array e stringhe']);
   const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();
@@ -710,4 +711,16 @@ test('statistiche: tempo reale contro stimato per area', async (t) => {
   assert.strictEqual(algo.ratio, 150 / 150);
   const sis = st.areas.find((a) => a.area === 'sistemi');
   assert.deepStrictEqual([sis.compared, sis.ratio], [0, null]);
+});
+
+test('ultima sessione: date impossibili, future e righe libere ignorate; senza righe null', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const ov = async () => (await call('GET', '/api/overview', null, c)).json();
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-04 | algoritmi | A | ok | nessuna | 20 min\n- 2026-02-31 | sistemi | B | ok\n- 2026-11-12 | sistemi | futura | ok\nriga libera 2026-11-08\n');
+  assert.deepStrictEqual((await ov()).lastSession, { date: '2026-11-04', area: 'algoritmi', days: 5 });
+  fs.writeFileSync(path.join(dir, 'progressi.md'), 'solo testo\n- 2026-11-12 | sistemi | futura | ok\n');
+  assert.strictEqual((await ov()).lastSession, null);
+  fs.rmSync(path.join(dir, 'progressi.md'));
+  assert.strictEqual((await ov()).lastSession, null);
 });
