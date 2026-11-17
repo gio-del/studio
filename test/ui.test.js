@@ -111,6 +111,25 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 0, 'l\'invito non torna');
   assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 hGiorni di studio di fila: \d+/);
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
+  // ultima sessione: nella fixture è del 9 nov (da più di 4 giorni): avviso; con una sessione di 5 giorni fa o senza sessioni
+  assert.match(await ev('document.querySelector(".weekline [data-last-session]").textContent'), /^Nessuna sessione da \d+ giorni$/);
+  await noOverflow('avviso ultima sessione');
+  const ymd = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const oggiRoute = async () => { await ev('route().then(() => true)'); await waitFor('!!document.querySelector("section.hero")', 'Oggi'); };
+  const prog = fs.readFileSync(path.join(dir, 'progressi.md'), 'utf8');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${ymd(5)} | sistemi | <b>x</b> | ok | nessuna | 20 min\n`);
+  await oggiRoute();
+  assert.strictEqual(await ev('document.querySelector(".weekline [data-last-session]").textContent'), 'Nessuna sessione da 5 giorni');
+  assert.strictEqual(await ev('document.querySelectorAll(".weekline [data-last-session] *").length'), 0);
+  fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${ymd(3)} | sistemi | x | ok | nessuna | 20 min\n`);
+  await oggiRoute();
+  assert.strictEqual(await ev('document.querySelector(".weekline [data-last-session]").textContent'), 'Ultima sessione: 3 giorni fa (Sistemi)');
+  await noOverflow('ultima sessione');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), 'solo testo\n');
+  await oggiRoute();
+  assert.strictEqual(await ev('document.querySelectorAll(".weekline [data-last-session]").length'), 0, 'senza sessioni niente riga');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), prog);
+  await oggiRoute();
   assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);
   await noOverflow('oggi'); await targets('oggi');
   // «Ho solo N minuti»: il primo passo aperto che ci sta, con le azioni di stepBody; tocchi ripetuti non ne duplicano
