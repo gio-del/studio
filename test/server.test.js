@@ -567,9 +567,18 @@ test('ricerca: gruppi, accenti, minimo e massimo, sola lettura', async (t) => {
   assert.deepStrictEqual(r.note.map((n) => n.name), ['Città.md']);
   assert.deepStrictEqual(r.schede.map((n) => n.name), ['2026-11-06 algoritmi - Hash map.md']);
   assert.strictEqual(r.note[0].title, 'Città <b>x</b>');
+  assert.deepStrictEqual(r.sessioni, []);
+  assert.deepStrictEqual(r.verifiche.map((v) => [v.date, v.area, v.part, v.label, v.text]), [['2026-11-08', 'algoritmi', 'Parte 1', 'Lacuna', 'hash map e collisioni']]);
+  fs.appendFileSync(path.join(dir, 'progressi.md'), '- 2026-11-12 | algoritmi | Hash map: collisioni | ok | nessuna | 30 min\n- 2026-11-13 | algoritmi | Hash map <b>x</b> | 6/10\nriga raw hash map\n');
+  const s2 = await (await get('hash map')).json();
+  assert.deepStrictEqual(s2.sessioni.map((x) => [x.date, x.area, x.step, x.outcome]), [['2026-11-13', 'algoritmi', 'Hash map <b>x</b>', '6/10'], ['2026-11-12', 'algoritmi', 'Hash map: collisioni', 'ok']]);
+  fs.renameSync(path.join(dir, 'progressi.md'), path.join(dir, 'p.bak')); fs.renameSync(path.join(dir, 'verifiche.md'), path.join(dir, 'v.bak'));
+  const s3 = await (await get('hash map')).json();
+  assert.deepStrictEqual([s3.sessioni, s3.verifiche], [[], []]);
+  fs.renameSync(path.join(dir, 'p.bak'), path.join(dir, 'progressi.md')); fs.renameSync(path.join(dir, 'v.bak'), path.join(dir, 'verifiche.md'));
   assert.deepStrictEqual((await (await get('citta')).json()).note.map((n) => n.name), ['Città.md']);
   const none = await (await get('zzzzqq')).json();
-  assert.deepStrictEqual(none, { passi: [], lacune: [], note: [], schede: [] });
+  assert.deepStrictEqual(none, { passi: [], lacune: [], note: [], schede: [], sessioni: [], verifiche: [] });
   // lacuna chiusa non compare; massimo 30 per gruppo
   assert.deepStrictEqual((await (await get('notazione')).json()).lacune, []);
   for (let i = 0; i < 40; i++) fs.writeFileSync(path.join(dir, 'Note', `n${i}.md`), 'parola comune');

@@ -645,20 +645,22 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("#cerca")', 'pagina Cerca');
   assert.strictEqual(await current(), 'Altro');
   await fill('#cerca', 'HASH');
-  await waitFor('document.querySelectorAll("#risultati .group").length === 3', 'risultati');
+  await waitFor('document.querySelectorAll("#risultati .group").length === 4', 'risultati');
   assert.match(await text(), /Hash map/);
   assert.match(await text(), /Città <b>x<\/b>/);
   assert.strictEqual(await ev('document.querySelectorAll("main b, main img, main script").length'), 0);
   assert.strictEqual(await ev('location.hash'), '#/cerca?q=HASH');
+  assert.match(await ev('[...document.querySelectorAll("#risultati .group")].map((g) => g.querySelector("h2").textContent).join("|")'), /Verifiche \(1\)/);
+  assert.strictEqual(await ev('document.querySelector("#risultati a.row[href=\'#/andamento/verifiche\']").textContent.includes("hash map e collisioni")'), true);
   await noOverflow('cerca'); await targets('cerca');
   await fill('#cerca', 'zzzzqq');
   await waitFor('!!document.querySelector("#risultati .empty")', 'nessun risultato');
   await fill('#cerca', 'hash');
-  await waitFor('document.querySelectorAll("#risultati .group").length === 3', 'risultati di nuovo');
+  await waitFor('document.querySelectorAll("#risultati .group").length === 4', 'risultati di nuovo');
   await ev('document.querySelector("#risultati a.row[href^=\'#/area/\']").click()');
   await waitFor('document.querySelector("main h1") && document.querySelector("main h1").textContent !== "Cerca" && location.hash.startsWith("#/area/algoritmi")', 'pagina area dal risultato');
   await go('#/cerca?q=hash');
-  await waitFor('document.querySelector("#cerca") && document.querySelector("#cerca").value === "hash" && document.querySelectorAll("#risultati .group").length === 3', 'indirizzo proprio con q');
+  await waitFor('document.querySelector("#cerca") && document.querySelector("#cerca").value === "hash" && document.querySelectorAll("#risultati .group").length === 4', 'indirizzo proprio con q');
   await go('#/altro');
 
   // Oggi: «Da rileggere», schede a 1, 3, 8 e 30 giorni fa: al massimo 3, le più recenti prima; «Riletta» a tocchi ripetuti
