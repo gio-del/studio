@@ -108,6 +108,7 @@ test('statistiche: ore per settimana, per area, verifiche superate', async (t) =
   assert.strictEqual(algo.weekMinutes, 90);
   assert.deepStrictEqual([algo.verifiche, algo.superate], [2, 1], 'parziale non conta, superata sì');
   assert.strictEqual(algo.done, 1);
+  assert.deepStrictEqual(st.verifiche, [{ area: 'algoritmi', total: 2, passed: 1, lastDate: '2026-11-08', lastOutcome: 'superata' }], 'sistemi ha una sola verifica: non compare');
   assert.strictEqual(st.totals.minutes, 225);
   assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
 });

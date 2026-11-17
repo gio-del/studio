@@ -773,6 +773,17 @@ async function pageStatistiche(main) {
   }
   main.append(wk);
   dayMap(main, s);
+  if (s.verifiche && s.verifiche.length) {
+    main.append(h('h2', null, 'Verifiche'));
+    const vc = h('div', { class: 'card verifiche-stat' });
+    for (const v of s.verifiche) {
+      const ar = s.areas.find((x) => x.area === v.area);
+      vc.append(h('div', { class: 'vrow' }, h('div', { class: 'title' }, ar ? ar.title : v.area),
+        h('div', { class: 'chips' }, chip(`superate ${v.passed} di ${v.total}`, v.passed === v.total ? 'ok' : '')),
+        v.lastDate ? h('p', { class: 'small muted' }, `Ultima: ${when(v.lastDate)}${v.lastOutcome ? ` · ${v.lastOutcome}` : ''}`) : null));
+    }
+    main.append(vc);
+  }
   main.append(h('h2', null, 'Per area'));
   const list = h('div', { class: 'list' });
   for (const a of s.areas) {
