@@ -572,9 +572,10 @@ test('ricerca: gruppi, accenti, minimo e massimo, sola lettura', async (t) => {
   fs.appendFileSync(path.join(dir, 'progressi.md'), '- 2026-11-12 | algoritmi | Hash map: collisioni | ok | nessuna | 30 min\n- 2026-11-13 | algoritmi | Hash map <b>x</b> | 6/10\nriga raw hash map\n');
   const s2 = await (await get('hash map')).json();
   assert.deepStrictEqual(s2.sessioni.map((x) => [x.date, x.area, x.step, x.outcome]), [['2026-11-13', 'algoritmi', 'Hash map <b>x</b>', '6/10'], ['2026-11-12', 'algoritmi', 'Hash map: collisioni', 'ok']]);
-  fs.rmSync(path.join(dir, 'progressi.md')); fs.rmSync(path.join(dir, 'verifiche.md'));
+  fs.renameSync(path.join(dir, 'progressi.md'), path.join(dir, 'p.bak')); fs.renameSync(path.join(dir, 'verifiche.md'), path.join(dir, 'v.bak'));
   const s3 = await (await get('hash map')).json();
   assert.deepStrictEqual([s3.sessioni, s3.verifiche], [[], []]);
+  fs.renameSync(path.join(dir, 'p.bak'), path.join(dir, 'progressi.md')); fs.renameSync(path.join(dir, 'v.bak'), path.join(dir, 'verifiche.md'));
   assert.deepStrictEqual((await (await get('citta')).json()).note.map((n) => n.name), ['Città.md']);
   const none = await (await get('zzzzqq')).json();
   assert.deepStrictEqual(none, { passi: [], lacune: [], note: [], schede: [], sessioni: [], verifiche: [] });
