@@ -888,6 +888,8 @@ async function pageCerca(main, q) {
       group('Lacune aperte', r.lacune.map((g) => row('#/ripasso', g.text, areaName(g.area, titles)))),
       group('Note', r.note.map(docRow)),
       group('Schede', r.schede.map(docRow)),
+      group('Sessioni', (r.sessioni || []).map((x) => row('#/andamento/sessioni', x.step || x.area, `${x.date} · ${areaName(x.area, titles)}${x.outcome ? ` · ${x.outcome}` : ''}`))),
+      group('Verifiche', (r.verifiche || []).map((x) => row('#/andamento/verifiche', `${x.label}: ${x.text}`, `${x.date} · ${areaName(x.area, titles)}${x.part ? ` · ${x.part}` : ''}`))),
     ].filter(Boolean);
     out.replaceChildren(...(blocks.length ? blocks : [empty('cerca', 'Nessun risultato', 'Prova con un\u2019altra parola.')]));
   }
@@ -930,7 +932,7 @@ async function pageAltro(main) {
   const t = tutorLine(f.session);
   main.append(h('h1', null, 'Altro'), h('div', { class: 'list' },
     item('#/come-funziona', 'aiuto', 'Come funziona', 'App, tutor, note e ripasso in un minuto'),
-    item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note e schede'),
+    item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note, schede e storico'),
     item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
     item('#/obiettivi', 'obiettivi', 'Obiettivi', 'Perché studi e quanto tempo hai'),
     item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
