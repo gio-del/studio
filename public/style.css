@@ -300,3 +300,4 @@ details.week > summary { font-size: .9375rem; }
 .filters { display: flex; flex-wrap: wrap; gap: var(--s2); margin: 0 0 var(--s4); }
 .filters .btn.filter { padding: 0 var(--s3); }
 .filters .btn.filter[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); border-color: var(--primary); }
+.verifiche-stat .vrow + .vrow { margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--line); }
