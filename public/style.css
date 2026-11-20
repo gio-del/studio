@@ -244,6 +244,11 @@ form.report .row-btn { display: flex; gap: var(--s2); }
 .cal-items { list-style: none; margin: 0 0 var(--s2); padding: 0; }
 .cal-items li { display: flex; align-items: center; gap: var(--s3); min-height: 44px; }
 .cal-items a { display: inline-flex; align-items: center; min-height: 44px; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin: 0 0 var(--s3); }
+.cal-arrow { min-width: 44px; padding: 0 var(--s3); }
+.cal-arrow[aria-disabled=true] { opacity: .4; cursor: default; }
+.cal-range { font-weight: 650; text-align: center; flex: 1; }
+.cal-now { min-height: 44px; display: inline-flex; align-items: center; margin: 0 0 var(--s2); }
 .cal-time { font-variant-numeric: tabular-nums; font-weight: 650; }
 .cal-day p { margin: 0; }
 .entry .top .state { width: 20px; height: 20px; color: var(--primary); }

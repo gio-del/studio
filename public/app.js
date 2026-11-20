@@ -1016,12 +1016,23 @@ async function pageSchede(main) {
   draw();
 }
 
-async function pageCalendario(main) {
-  const { days, weekPlanned, weekDone, goalMinutes } = await api('/api/calendario');
+async function pageCalendario(main, wRaw) {
+  const w = /^[+-]?\d{1,3}$/.test(wRaw || '') ? Math.max(-12, Math.min(1, Number(wRaw))) : 0;
+  const { days, weekPlanned, weekDone, goalMinutes } = await api(w ? `/api/calendario?w=${w}` : '/api/calendario');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
+  const dm = (iso) => { const p = iso.split('-'); return [Number(p[2]), MESI[Number(p[1]) - 1] || '']; };
+  const [a, b] = [dm(days[0].date), dm(days[6].date)];
+  const range = a[1] === b[1] ? `${a[0]}–${b[0]} ${b[1]}` : `${a[0]} ${a[1]} – ${b[0]} ${b[1]}`;
+  const wk = (n) => (n ? `#/calendario?w=${n}` : '#/calendario');
+  const arrow = (n, ok, label, ic) => (ok
+    ? h('a', { class: 'btn ghost cal-arrow', href: wk(n), 'aria-label': label, 'data-w': n }, icon(ic))
+    : h('span', { class: 'btn ghost cal-arrow', role: 'link', 'aria-disabled': 'true', 'aria-label': label }, icon(ic)));
+  main.append(h('nav', { class: 'cal-nav', 'aria-label': 'Settimane' }, arrow(w - 1, w > -12, 'Settimana precedente', 'indietro'), h('span', { class: 'cal-range', 'aria-live': 'polite' }, range), arrow(w + 1, w < 1, 'Settimana successiva', 'avanti')));
+  if (w) main.append(h('a', { class: 'more-link cal-now', href: '#/calendario' }, 'Torna a questa settimana'));
   const short = goalMinutes - weekPlanned;
   main.append(h('section', { class: 'card cal-week' },
-    weekPlanned ? [h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} di ${weekPlanned} min previsti`), bar(weekDone, weekPlanned)] : h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} min fatti`),
+    w > 0 ? h('p', { class: 'cal-week-line' }, weekPlanned ? `Settimana: ${weekPlanned} min previsti` : 'Settimana: niente in calendario')
+      : weekPlanned ? [h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} di ${weekPlanned} min previsti`), bar(weekDone, weekPlanned)] : h('p', { class: 'cal-week-line' }, `Settimana: ${weekDone} min fatti`),
     h('p', { class: 'small muted' }, `Obiettivo: ${goalMinutes} min`),
     weekPlanned && short > 0 ? h('p', { class: 'small cal-short' }, `Il calendario prevede ${short} min in meno dell'obiettivo`) : null));
   for (const d of days) {
@@ -1110,7 +1121,7 @@ async function route() {
     else if (known === 'ripasso') await pageRipasso(main, new URLSearchParams(query).get('area') || '');
     else if (known === 'andamento') await pageAndamento(main, arg);
     else if (known === 'cerca') await pageCerca(main, new URLSearchParams(query).get('q') || '');
-    else if (known === 'calendario') await pageCalendario(main);
+    else if (known === 'calendario') await pageCalendario(main, new URLSearchParams(query).get('w'));
     else if (known === 'schede') await pageSchede(main);
     else if (known === 'obiettivi') await pageObiettivi(main);
     else if (known === 'leetcode') await pageLeetcode(main);

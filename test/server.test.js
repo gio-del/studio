@@ -499,6 +499,27 @@ test('calendario: la settimana con voci e minuti fatti, vuota se manca il file',
   assert.strictEqual((await call('GET', '/api/calendario', null, c)).status, 200);
 });
 
+test('calendario: sfoglia le settimane con w, 400 se non valido, file mancante', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const get = (w) => call('GET', `/api/calendario?w=${w}`, null, c);
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mer | 18:30 | 60\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | Array | ok | 25 min\n- 2026-11-03 | algoritmi | Liste | ok | 40 min\n- 2026-11-05 | sistemi | x | ok | 10 min\n');
+  const prev = await (await get(-1)).json();
+  assert.deepStrictEqual(prev.days.map((d) => d.date), ['2026-11-02', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-06', '2026-11-07', '2026-11-08']);
+  assert.deepStrictEqual([prev.weekDone, prev.weekPlanned], [50, 120]);
+  assert.ok(prev.days.every((d) => !d.today));
+  const cur = await (await get(0)).json();
+  assert.deepStrictEqual([cur.weekDone, cur.weekPlanned, cur.days[0].today], [25, 120, true]);
+  const next = await (await get(1)).json();
+  assert.deepStrictEqual([next.days[0].date, next.weekDone, next.weekPlanned], ['2026-11-16', 0, 120]);
+  assert.strictEqual((await get(-12)).status, 200);
+  for (const w of ['-13', '2', 'x', '', '1.5', '1e1', '--1']) assert.strictEqual((await get(w)).status, 400, w);
+  fs.rmSync(path.join(dir, 'calendario.md'));
+  const m = await (await get(-1)).json();
+  assert.deepStrictEqual([m.weekDone, m.weekPlanned], [50, 0]);
+});
+
 test('obiettivi: testo presente, file mancante, HTML ostile', async (t) => {
   const { call, login, dir } = await start(t);
   assert.strictEqual((await call('GET', '/api/obiettivi')).status, 401);

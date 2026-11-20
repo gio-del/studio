@@ -559,6 +559,27 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelector("main section.cal-week").nextElementSibling === document.querySelector("section.cal-day")'), true, 'scheda prima dei giorni');
   assert.match(await ev('document.querySelector("section.cal-week").textContent'), /Settimana: \d+ di 105 min previsti.*Obiettivo: 420 min.*Il calendario prevede 315 min in meno dell'obiettivo/);
   assert.strictEqual(await ev('document.querySelectorAll("section.cal-week .bar").length'), 1);
+  // frecce: tocchi ripetuti, intervallo, limiti, ritorno alla settimana corrente
+  const tapArrow = async (label) => { await ev(`document.querySelector('[aria-label="${label}"]').click()`); await new Promise((r) => setTimeout(r, 150)); };
+  await go('#/calendario?w=-1');
+  await waitFor('!!document.querySelector("section.cal-week")', 'settimana scorsa');
+  assert.match(await ev('document.querySelector(".cal-range").textContent'), /^\d+–\d+ \p{L}+$|^\d+ \p{L}+ – \d+ \p{L}+$/u);
+  assert.strictEqual(await ev('document.querySelectorAll("section.cal-day.is-today").length'), 0, 'oggi solo nella settimana corrente');
+  for (let i = 0; i < 4; i++) { await tapArrow('Settimana successiva'); await tapArrow('Settimana precedente'); }
+  await waitFor('location.hash === "#/calendario?w=-1" && document.querySelectorAll("section.cal-day").length === 7', 'dopo i tocchi');
+  await tapArrow('Settimana successiva'); await tapArrow('Settimana successiva');
+  await waitFor('location.hash === "#/calendario?w=1"', 'prossima settimana');
+  assert.strictEqual(await ev('document.querySelector("[aria-label=\\"Settimana successiva\\"]").getAttribute("aria-disabled")'), 'true', 'oltre +1 disattivata');
+  assert.match(await ev('document.querySelector(".cal-now").textContent'), /Torna a questa settimana/);
+  await noOverflow('calendario +1'); await targets('calendario +1');
+  await ev('document.querySelector(".cal-now").click()');
+  await waitFor('document.querySelectorAll(".cal-now").length === 0 && document.querySelectorAll("section.cal-day.is-today").length === 1', 'torna alla corrente');
+  await go('#/calendario?w=-12');
+  await waitFor('!!document.querySelector("section.cal-week")', 'w=-12');
+  assert.strictEqual(await ev('document.querySelector("[aria-label=\\"Settimana precedente\\"]").getAttribute("aria-disabled")'), 'true', 'oltre -12 disattivata');
+  await noOverflow('calendario -12'); await targets('calendario -12');
+  await go('#/calendario');
+  await waitFor('!!document.querySelector("section.cal-week")', 'calendario corrente');
   // calendario vuoto: solo i minuti fatti e l'obiettivo, senza barra né avviso
   fs.renameSync(path.join(dir, 'calendario.md'), path.join(dir, 'calendario.off'));
   await go('#/altro'); await go('#/calendario');
