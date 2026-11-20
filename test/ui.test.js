@@ -580,6 +580,20 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/oggi'); await go('#/andamento/statistiche');
   await waitFor('!!document.querySelector(".stat-hero")', 'statistiche senza la card');
   assert.strictEqual(await ev('document.querySelectorAll(".lastweek").length'), 0, 'dati tolti: la card sparisce');
+  // «Record»: con meno di 2 giorni di studio niente card; con 2 giorni compare, come testo, senza scroll orizzontale
+  await go('#/oggi'); await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".stat-hero")', 'statistiche senza record');
+  assert.strictEqual(await ev('document.querySelectorAll(".records").length'), 0, 'dati insufficienti: niente card');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-01-05 | algoritmi | a | ok | 30 min\n- 2026-01-06 | algoritmi | b | ok | 45 min\n');
+  await go('#/oggi'); await go('#/andamento/statistiche');
+  await waitFor('!!document.querySelector(".records")', 'card Record');
+  const recText = await ev('document.querySelector(".records").textContent');
+  assert.match(recText, /Serie più lunga: 2 giorni \(dal 5 al 6 gen\)/);
+  assert.match(recText, /Settimana migliore: 1 h 15 \(settimana del 5 gen\)/);
+  await noOverflow('statistiche record'); await targets('statistiche record');
+  for (let i = 0; i < 3; i++) await ev('document.querySelector(".seg a[href$=statistiche]").click()');
+  await sleep(300);
+  assert.strictEqual(await ev('document.querySelectorAll(".records").length'), 1, 'tocchi ripetuti: una sola card');
   fs.writeFileSync(path.join(dir, 'progressi.md'), progBak);
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');

@@ -750,6 +750,17 @@ function lastWeekCard(r) {
   return h('section', { class: 'card lastweek' }, h('p', { class: 'overline' }, 'La settimana scorsa'), h('p', { class: 'small lastweek-line' }, parts.join(' · ')));
 }
 
+// «Record»: serie più lunga e settimana migliore (da /api/stats `records`); senza dati niente card.
+function shortDay(iso) { const m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso || ''); return m ? [+m[2], MESI[m[1] - 1]] : ['', '']; }
+function recordsCard(r) {
+  if (!r || !r.streak || !r.bestWeek) return null;
+  const a = shortDay(r.streak.from), b = shortDay(r.streak.to), w = shortDay(r.bestWeek.start);
+  const range = a[1] === b[1] ? `dal ${a[0]} al ${b[0]} ${b[1]}` : `dal ${a[0]} ${a[1]} al ${b[0]} ${b[1]}`;
+  return h('section', { class: 'card records' }, h('p', { class: 'overline' }, 'Record'),
+    h('p', { class: 'small record-streak' }, `Serie più lunga: ${plural(r.streak.days, 'giorno', 'giorni')} (${range})`),
+    h('p', { class: 'small record-week' }, `Settimana migliore: ${hours(r.bestWeek.minutes)} (settimana del ${w[0]} ${w[1]})`));
+}
+
 async function pageStatistiche(main) {
   const [s, rias] = await Promise.all([api('/api/stats'), api('/api/riassunto').catch((e) => { if (e.message === 'login') throw e; return null; })]);
   const lw = lastWeekCard(rias);
@@ -762,6 +773,8 @@ async function pageStatistiche(main) {
     h('div', { class: `bar goalbar${cur.minutes >= goal ? ' reached' : ''}`, role: 'progressbar', 'aria-label': 'Ore della settimana', 'aria-valuemin': 0, 'aria-valuemax': goal, 'aria-valuenow': Math.min(cur.minutes, goal) }, fillSpan(pct)),
     h('p', { class: 'small muted' }, cur.minutes >= goal ? 'Obiettivo raggiunto.' : `Mancano ${hours(goal - cur.minutes)} all'obiettivo.`)));
   if (!s.weeks.some((w) => w.minutes) && !s.areas.some((x) => x.sessions)) main.append(empty('andamento', 'Ancora nessuna ora registrata', 'Il tutor scrive i minuti di ogni sessione in progressi.md.'));
+  const rc = recordsCard(s.records);
+  if (rc) main.append(rc);
   main.append(h('h2', null, 'Ore per settimana'));
   const wk = h('div', { class: 'card weeks' });
   for (const w of [...s.weeks].reverse()) {
