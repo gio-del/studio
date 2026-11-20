@@ -697,7 +697,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await waitFor('!!document.querySelector("main .empty")', 'schede vuote');
   await noOverflow('schede vuote'); await targets('schede vuote');
   fs.mkdirSync(path.join(dir, 'Schede'), { recursive: true });
-  for (const [d, a, n] of [['2026-11-03', 'Zeta', 'Uno'], ['2026-11-09', 'Algoritmi', 'Due <i>x</i>'], ['2026-11-05', 'Zeta', 'Tre']]) fs.writeFileSync(path.join(dir, 'Schede', `${d} ${a} - ${n.replace(/[<>]/g, '')}.md`), `# Scheda ${n}\nanteprima ${n.length}`);
+  for (const [d, a, n] of [['2026-11-03', 'Zeta', 'Uno'], ['2026-11-09', 'Algoritmi', 'Due <i>x</i>'], ['2026-11-05', 'Zeta', 'Tre']]) fs.writeFileSync(path.join(dir, 'Schede', `${d} ${a} - ${n.replace(/[<>/]/g, "")}.md`), `# Scheda ${n}\nanteprima ${n.length}`);
   const filesBefore2 = fs.readdirSync(dir).sort();
   await go('#/altro');
   await waitFor('!!document.querySelector("a.row[href=\\"#/schede\\"]")', 'voce Schede in Altro');
