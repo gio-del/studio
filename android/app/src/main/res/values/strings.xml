@@ -13,4 +13,18 @@
     <string name="err_scheme">L\'indirizzo deve iniziare con https://</string>
     <string name="err_invalid">Indirizzo non valido.</string>
     <string name="err_unreachable">Il server non risponde a questo indirizzo.</string>
+    <string name="widget_name">Serie di studio</string>
+    <string name="widget_description">La serie di giorni di studio e la settimana.</string>
+    <string name="widget_unit">giorni di fila</string>
+    <string name="widget_unit_one">giorno di fila</string>
+    <string name="widget_login">Apri studio per accedere</string>
+    <string name="widget_stale">Aggiornato alle %1$s</string>
+    <string name="widget_cd">Serie di studio: %1$s. %2$s</string>
+    <string name="widget_cd_flame_on">Oggi hai già studiato</string>
+    <string name="widget_cd_flame_off">Oggi non hai ancora studiato</string>
+    <string name="widget_cd_day">%1$s %2$s: %3$s</string>
+    <string name="state_studio">studio</string>
+    <string name="state_riposo">riposo</string>
+    <string name="state_vuoto">nessuno studio</string>
+    <string name="today_suffix">(oggi)</string>
 </resources>
