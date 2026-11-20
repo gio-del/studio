@@ -305,10 +305,10 @@ function stepBody(area, title, ref, s, session, onDone) {
   const res = s.resource;
   const main = isHttp(res && res.url);
   const pending = h('div', { class: 'chips pending' });
-  const showPending = (min) => { pending.replaceChildren(chip(`Da verificare con il tutor · ${min} min`, 'pri')); };
+  const showPending = (min, age) => { pending.replaceChildren(chip(`Da verificare con il tutor · ${min} min${ageSuffix(age)}`, 'pri')); };
   const fb = s.done || s.pending ? null : doneBox(area, ref, s.time, (min) => { showPending(min); fb.open.remove(); if (onDone) onDone(min); }, main);
   if (s.pending) {
-    showPending(s.pending);
+    showPending(s.pending, s.pendingAge);
     const undo = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'annulla' }, 'Annulla');
     undo.addEventListener('click', async () => {
       if (undo.disabled) return;
@@ -470,7 +470,7 @@ function docsBlock(docs) {
 function stepItem(a, p, w, s, i, isNext) {
   const state = icon(s.done ? 'fatto' : isNext ? 'prossimo' : 'dafare', 'state');
   const label = h('span', { class: 'grow' }, h('span', { class: 'sr' }, s.done ? 'Fatto: ' : isNext ? 'Adesso: ' : s.pending ? 'Da verificare: ' : 'Da fare: '), h('span', { class: 'step-text' }, s.text),
-    isNext ? h('span', { class: 'small tag' }, 'Adesso, in cima alla pagina') : s.pending && !s.done ? h('span', { class: 'small tag' }, `Da verificare con il tutor · ${s.pending} min`) : null);
+    isNext ? h('span', { class: 'small tag' }, 'Adesso, in cima alla pagina') : s.pending && !s.done ? h('span', { class: 'small tag' }, `Da verificare con il tutor · ${s.pending} min${ageSuffix(s.pendingAge)}`) : null);
   if (isNext) {
     const up = h('button', { class: 'step', type: 'button', 'data-act': 'adesso' }, state, label, icon('su', 'chev'));
     up.addEventListener('click', () => { const top = document.getElementById('adesso'); if (top) { top.scrollIntoView({ block: 'start' }); top.focus({ preventScroll: true }); } });
@@ -908,14 +908,22 @@ async function pageRisorse(main) {
   for (const a of areas) main.append(h('h2', null, a.title), h('section', { class: 'card prose' }, a.blocks.length ? listOf(a.blocks) : h('p', { class: 'muted' }, 'Vuoto')));
 }
 
+// «da N giorni» per l'attesa del tutor; con età nulla (data non valida) niente.
+const ageText = (n) => (Number.isInteger(n) ? (n === 0 ? 'da oggi' : n === 1 ? 'da ieri' : `da ${n} giorni`) : '');
+const ageSuffix = (n) => (Number.isInteger(n) ? ` · ${ageText(n)}` : '');
+const STALE_DAYS = 7;
+
 async function pageFeedback(main) {
   const { blocks: bl, open, titles, session } = await api('/api/feedback');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Segnalazioni'));
+  const oldest = open.reduce((m, r) => (Number.isInteger(r.ageDays) && r.ageDays > m ? r.ageDays : m), -1);
+  if (oldest >= STALE_DAYS) main.append(h('p', { class: 'error', role: 'alert', id: 'attesa-avviso' }, `Il tutor non gestisce una segnalazione da ${oldest} giorni`));
   main.append(h('h2', null, 'Aperte'));
   if (!open.length) main.append(h('p', { class: 'muted' }, 'Nessuna segnalazione aperta.'));
   for (const r of open) {
     main.append(h('section', { class: 'card entry' }, r.raw ? r.raw : [
-      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI_VISTA.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text)]));
+      h('div', { class: 'top' }, when(r.date), chip(areaName(r.area, titles), 'pri'), chip((TIPI_VISTA.find(([v]) => v === r.type) || [0, r.type])[1])), h('p', { class: 'what' }, r.text),
+      ageText(r.ageDays) ? h('p', { class: 'small muted age' }, ageText(r.ageDays)) : null]));
   }
   main.append(h('h2', null, 'Cosa ha cambiato il tutor'));
   main.append(bl.length ? h('section', { class: 'card prose' }, listOf(bl)) : h('p', { class: 'muted' }, 'Ancora niente.'));
