@@ -166,7 +166,13 @@ function createServer({ config, now = Date.now }) {
     if (req.method !== 'GET') return send(res, 405, { error: 'Metodo non permesso' });
     const session = { url: config.sessionUrl || null, name: config.sessionName || null };
     if (p === '/api/overview') return send(res, 200, { ...(await data.overview()), session });
-    if (p === '/api/calendario') return send(res, 200, await data.calendar());
+    if (p === '/api/calendario') {
+      const w = new URL(req.url, 'http://x').searchParams.get('w');
+      if (w === null) return send(res, 200, await data.calendar());
+      const n = Number(w);
+      if (!/^[+-]?\d{1,3}$/.test(w) || n < -12 || n > 1) return send(res, 400, { error: 'Settimana non valida' });
+      return send(res, 200, await data.calendar(n));
+    }
     if (p === '/api/obiettivi') return send(res, 200, await data.goals());
     if (p === '/api/resources') return send(res, 200, await data.resources());
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
