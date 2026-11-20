@@ -485,6 +485,41 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig);
   assert.deepStrictEqual(fs.readdirSync(dir).sort(), filesBefore, 'il filtro non scrive file');
 
+  // Ripassa a turno: compare con almeno 2 lacune aperte, «Dopo» non scrive, «Ripassata» una riga sola, riepilogo finale
+  fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig + '\n## 2020-01-02 | sistemi | Parte 1 | sessione\nEsito: parziale\nLacune:\n- [ ] scheduler <b>x</b>\n- [ ] mutex <i>y</i>\n');
+  const rowsBefore = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8');
+  await go('#/oggi'); await go('#/ripasso');
+  await waitFor('document.querySelectorAll("main .open section.card").length === 3 && !!document.querySelector("[data-act=turno]") && !document.querySelector("[data-act=turno]").hidden', 'tasto a turno');
+  assert.strictEqual(await ev('document.querySelector("[data-act=turno]").getBoundingClientRect().height >= 43.5'), true);
+  await ev('(() => { const b = document.querySelector("[data-act=turno]"); b.click(); })()');
+  await waitFor('document.querySelectorAll(".turn section.card").length === 1', 'turno avviato');
+  await targets('turno'); await noOverflow('turno');
+  assert.match(await ev('document.querySelector(".turn").textContent'), /Lacuna 1 di 3/);
+  const first = await ev('document.querySelector(".turn section.card .what").textContent');
+  await ev('(() => { const b = document.querySelector(".turn [data-act=dopo]"); b.click(); })()');
+  await waitFor('document.querySelector(".turn section.card .what").textContent !== ' + JSON.stringify(first), 'Dopo');
+  assert.strictEqual(fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8'), rowsBefore, 'Dopo non scrive');
+  assert.strictEqual(await ev('document.querySelectorAll(".turn script, .turn b, .turn i").length'), 0);
+  for (let i = 0; i < 3; i++) {
+    await ev('(() => { const b = document.querySelector(".turn section.card .btn:not(.ghost)"); b.click(); b.click(); b.click(); })()');
+    await waitFor('document.querySelectorAll(".turn section.card").length === ' + (i < 2 ? 1 : 0) + ' && (' + (i < 2) + ' ? /Lacuna ' + (i + 2) + ' di 3/.test(document.querySelector(".turn").textContent) : !!document.querySelector(".turn .summary"))', 'Ripassata ' + i);
+  }
+  assert.match(await ev('document.querySelector(".turn .summary").textContent'), /Ripassate 3 di 3/);
+  const added = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter((l) => /\| ripassata \|/.test(l));
+  assert.strictEqual(added.length, 4, 'una riga per lacuna (una già in attesa), mai doppia');
+  assert.strictEqual(new Set(added).size, 4);
+  await ev('document.querySelector(".turn [data-act=fine]").click()');
+  await waitFor('document.querySelectorAll("main .waiting section.card").length === 3 || document.querySelectorAll("main .waiting section.card").length === 4', 'fine del turno');
+  await ev('(() => { for (const b of [...document.querySelectorAll("main .waiting [data-act=annulla]")]) b.click(); })()');
+  await waitFor('document.querySelectorAll("main .open section.card").length >= 3', 'annullate');
+  await waitFor('(() => { const b = document.querySelector("[data-act=turno]"); return !!b && !b.hidden; })()', 'tasto di nuovo');
+  await ev('document.querySelector("[data-act=turno]").click()');
+  await waitFor('document.querySelectorAll(".turn section.card").length === 1', 'turno di nuovo');
+  await ev('document.querySelector(".turn [data-act=esci]").click()');
+  await waitFor('document.querySelector(".turn").hidden && !document.querySelector(".ripbody").hidden', 'Esci');
+  fs.writeFileSync(path.join(dir, 'verifiche.md'), verOrig);
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), rowsBefore);
+
   // Altre pagine
   for (const [hash, probe, re, tab] of [['#/risorse', 'main section.card', /Awesome/, 'Altro'], ['#/progressi', 'main section.card', /Notazione O grande/, 'Andamento'], ['#/feedback', 'main section.card', /spiegazione poco chiara/, 'Altro'], ['#/obiettivi', 'main section.card', /(?=[\s\S]*7 ore a settimana <b>x<\/b>)/, 'Altro'], ['#/calendario', 'main section.cal-day', /(?=[\s\S]*Sistemi)(?=[\s\S]*<b>x<\/b>)(?=[\s\S]*Riposo)/, 'Altro']]) {
     await go(hash);
