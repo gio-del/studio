@@ -164,6 +164,24 @@ test('parser: testo pulito da link e simboli Markdown, risorse in più solo http
   assert.deepStrictEqual(o.weeks[0].steps[0].links, []);
 });
 
+test('settimana della serie: stati dei giorni, oggi, date future, nessun dato', () => {
+  const r = (date, minutes) => ({ date, minutes });
+  const cal = P.parseCalendar('- a | lun,mar,mer,gio,ven | 09:00 | 60\n'); // sab e dom di riposo
+  const st = (w) => w.days.map((d) => d.state[0]).join('');
+  const w = P.streakWeek([r('2026-11-09', 10), r('2026-11-10', 10), r('2026-11-12', 10), r('2026-11-14', 10)], cal, '2026-11-12');
+  assert.deepStrictEqual(w.days.map((d) => d.date), ['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15']);
+  assert.strictEqual(st(w), 'ssvsvrr', 'serie spezzata mercoledì; sab 14 è futuro: ignorato, resta di riposo');
+  assert.deepStrictEqual(w.days.map((d) => d.today), [false, false, false, true, false, false, false]);
+  assert.strictEqual(w.todayDone, true);
+  const w2 = P.streakWeek([r('2026-11-12', 10), r('2026-11-11', 10), r('2026-11-09', 10)], cal, '2026-11-13');
+  assert.strictEqual(w2.todayDone, false, 'oggi senza sessione');
+  assert.strictEqual(P.streak([r('2026-11-12', 10), r('2026-11-11', 10)], cal, '2026-11-13'), 2, 'la serie di ieri resta valida');
+  assert.strictEqual(st(P.streakWeek([r('2026-11-14', 10)], cal, '2026-11-14')), 'vvvvvsr', 'sabato di riposo con studio: studio');
+  assert.strictEqual(P.streakWeek([], [], '2026-11-12').todayDone, false);
+  assert.strictEqual(st(P.streakWeek(undefined, undefined, '2026-11-12')), 'vvvvvvv', 'nessun dato e nessun calendario: nessun riposo');
+  assert.strictEqual(st(P.streakWeek([r('2026-11-10', 0), r('2026-11-10', null)], cal, '2026-11-12')), 'vvvvvrr', 'senza minuti non conta');
+});
+
 test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del calendario', () => {
   const r = (date, minutes) => ({ date, minutes });
   const cal = P.parseCalendar('- a | lun,mar,mer,gio,ven | 09:00 | 60\n'); // sab e dom sono riposo

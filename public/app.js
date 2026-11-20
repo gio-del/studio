@@ -42,6 +42,7 @@ const ICONS = {
   codice: [['path', { d: 'M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16' }]],
   cerca: [['circle', { cx: 11, cy: 11, r: 6.5 }], ['path', { d: 'M16 16l5 5' }]],
   timer: [['circle', { cx: 12, cy: 13, r: 8 }], ['path', { d: 'M12 9v4l2.5 2M9 2h6' }]],
+  fiamma: [['path', { d: 'M12 2.5c.6 3.2-1.4 4.6-3.2 6.7C7 11.3 6 13 6 15a6 6 0 0 0 12 0c0-2.4-1.2-4-2.4-5.3-.4 1.2-1 1.9-1.8 2.3.4-3.5-.2-7.2-1.8-9.5z' }]],
   lacuna: [['circle', { cx: 12, cy: 12, r: 9 }], ['path', { d: 'M12 8v5M12 16.5v.01' }]],
 };
 function icon(name, cls) {
@@ -379,6 +380,30 @@ function lastSessionLine(ls, areas) {
   return h('div', { class: 'small muted', 'data-last-session': 'ok' }, `Ultima sessione: ${when}${ls.area ? ` (${areaName(ls.area, titles)})` : ''}`);
 }
 
+// Widget della serie: fiamma accesa se oggi c'è già studio, numero dei giorni di fila e i 7 giorni della settimana.
+// Ogni giorno ha il segno (✓ studio, – riposo, vuoto) e l'etichetta accessibile: il colore non è l'unico segnale.
+const SETTIMANA = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica'];
+const SIGLE = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+const STATI = { studio: ['studio', '✓'], riposo: ['riposo', '–'], vuoto: ['nessuno studio', ''] };
+function streakWidget(o) {
+  const w = o.streakWeek;
+  if (!w || !Array.isArray(w.days)) return null;
+  const n = Number(o.streak) || 0;
+  const on = !!w.todayDone;
+  const frase = on ? (n === 1 ? 'Oggi hai studiato: la serie è iniziata' : 'Oggi hai studiato: la serie continua') : n > 0 ? 'Studia oggi per non perdere la serie' : 'Inizia una nuova serie oggi';
+  const days = w.days.slice(0, 7).map((d, i) => {
+    const st = STATI[d.state] || STATI.vuoto;
+    const num = Number(String(d.date).slice(8, 10)) || '';
+    return h('li', { class: `sd ${STATI[d.state] ? d.state : 'vuoto'}${d.today ? ' oggi' : ''}`, 'aria-label': `${SETTIMANA[i]} ${num}${d.today ? ' (oggi)' : ''}: ${st[0]}`, 'data-state': d.state, ...(d.today ? { 'aria-current': 'date' } : {}) },
+      h('span', { class: 'sl', 'aria-hidden': 'true' }, SIGLE[i]), h('span', { class: 'sm', 'aria-hidden': 'true' }, st[1]));
+  });
+  return h('section', { class: `streak ${on ? 'on' : 'off'}`, 'aria-label': 'Serie di giorni di studio', 'data-flame': on ? 'on' : 'off' },
+    h('div', { class: 'streak-top' }, icon('fiamma', 'flame'),
+      h('div', null, h('span', { class: 'streak-n' }, String(n)), h('span', { class: 'streak-u' }, n === 1 ? 'giorno di fila' : 'giorni di fila'))),
+    h('ul', { class: 'streak-week' }, days),
+    h('p', { class: 'small streak-msg' }, frase));
+}
+
 // Oggi: una cosa sola. Prima le lacune da ripassare, poi il passo dell'area di oggi, sotto le altre aree.
 async function pageOggi(main) {
   const o = await api('/api/overview');
@@ -387,11 +412,11 @@ async function pageOggi(main) {
   main.append(h('p', { class: 'overline' }, longDate(o.date)), h('h1', null, 'Oggi'));
   if (o.week) {
     const wm = Number(o.week.minutes) || 0;
-    const days = Number(o.streak) || 0;
+    const sw = streakWidget(o);
+    if (sw) main.append(sw);
     main.append(h('div', { class: 'weekline', role: 'group', 'aria-label': 'La tua settimana' },
       h('div', { class: 'small' }, h('strong', null, 'Questa settimana: '), `${wm ? hours(wm) : '0 h'} di ${hours(o.week.goalMinutes)}`),
       bar(wm, o.week.goalMinutes),
-      h('div', { class: 'small muted' }, `Giorni di studio di fila: ${days}`),
       lastSessionLine(o.lastSession, o.areas)));
   }
   if (!o.areas.length) { main.append(empty('programma', 'Nessun programma ancora', 'Il tutor lo crea alla prima sessione.'), tutorLine(o.session), h('a', { class: 'more-link', href: '#/come-funziona' }, 'Come funziona Studio', icon('avanti'))); return; }
