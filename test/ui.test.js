@@ -506,8 +506,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   }
   assert.match(await ev('document.querySelector(".turn .summary").textContent'), /Ripassate 3 di 3/);
   const added = fs.readFileSync(path.join(dir, 'segnalazioni.md'), 'utf8').split('\n').filter((l) => /\| ripassata \|/.test(l));
-  assert.strictEqual(added.length, 3, 'una riga per lacuna, mai doppia');
-  assert.strictEqual(new Set(added).size, 3);
+  assert.strictEqual(added.length, 4, 'una riga per lacuna (una già in attesa), mai doppia');
+  assert.strictEqual(new Set(added).size, 4);
   await ev('document.querySelector(".turn [data-act=fine]").click()');
   await waitFor('document.querySelectorAll("main .waiting section.card").length === 3 || document.querySelectorAll("main .waiting section.card").length === 4', 'fine del turno');
   await ev('(() => { for (const b of [...document.querySelectorAll("main .waiting [data-act=annulla]")]) b.click(); })()');
