@@ -918,6 +918,32 @@ async function pageObiettivi(main) {
     : empty('obiettivi', 'Nessun obiettivo ancora', 'Il tutor scrive qui perché studi: gli obiettivi, le aree, il tempo a disposizione e i giorni di studio.'));
 }
 
+async function pageSchede(main) {
+  const { schede } = await api('/api/schede');
+  main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Schede'));
+  if (!schede.length) { main.append(empty('libro', 'Nessuna scheda ancora', 'Il tutor scrive una scheda di ripasso a fine sessione: la trovi qui.')); return; }
+  const areas = [...new Set(schede.map((c) => c.area))].sort((a, b) => a.localeCompare(b, 'it'));
+  let sel = '';
+  const bar = h('div', { class: 'filters', role: 'group', 'aria-label': 'Filtra per area' });
+  const list = h('div', { class: 'list-schede' });
+  const draw = () => {
+    list.replaceChildren(...schede.filter((c) => !sel || c.area === sel).map((c) => h('section', { class: 'card scheda' },
+      h('div', { class: 'top' }, h('span', { class: 'small muted' }, rangeLabel(c.date)), chip(c.area, 'pri')),
+      h('p', { class: 'small muted' }, c.step), docRow(c))));
+    for (const b of bar.children) b.setAttribute('aria-pressed', String((b.dataset.area || '') === sel));
+  };
+  if (areas.length >= 2) {
+    for (const a of ['', ...areas]) {
+      const b = h('button', { class: 'btn ghost filter', type: 'button', 'data-area': a, 'aria-pressed': 'false' }, a || 'Tutte');
+      b.addEventListener('click', () => { sel = a; draw(); });
+      bar.append(b);
+    }
+    main.append(bar);
+  }
+  main.append(list);
+  draw();
+}
+
 async function pageCalendario(main) {
   const { days, weekPlanned, weekDone, goalMinutes } = await api('/api/calendario');
   main.append(h('a', { class: 'back', href: '#/altro' }, icon('indietro'), 'Altro'), h('h1', null, 'Calendario'));
@@ -945,6 +971,7 @@ async function pageAltro(main) {
     item('#/come-funziona', 'aiuto', 'Come funziona', 'App, tutor, note e ripasso in un minuto'),
     item('#/cerca', 'cerca', 'Cerca', 'Passi, lacune, note, schede e storico'),
     item('#/calendario', 'calendario', 'Calendario', 'La settimana di studio e i minuti fatti'),
+    item('#/schede', 'libro', 'Schede', 'Le schede di ripasso scritte dal tutor'),
     item('#/obiettivi', 'obiettivi', 'Obiettivi', 'Perché studi e quanto tempo hai'),
     item('#/leetcode', 'codice', 'LeetCode', 'Esercizi fatti e passi del programma'),
     item('#/risorse', 'libro', 'Risorse', 'Le fonti scelte per ogni area'),
@@ -973,7 +1000,7 @@ function showLogin() {
 
 // Menu: al massimo cinque voci, icona più etichetta. Le pagine secondarie stanno sotto «Altro».
 const TABS = [['oggi', 'Oggi'], ['programma', 'Programma'], ['ripasso', 'Ripasso'], ['andamento', 'Andamento'], ['altro', 'Altro']];
-const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', obiettivi: 'altro', feedback: 'altro', cerca: 'altro', 'come-funziona': 'altro' };
+const TAB_OF = { oggi: 'oggi', programma: 'programma', area: 'programma', ripasso: 'ripasso', andamento: 'andamento', altro: 'altro', risorse: 'altro', leetcode: 'altro', calendario: 'altro', schede: 'altro', obiettivi: 'altro', feedback: 'altro', cerca: 'altro', 'come-funziona': 'altro' };
 const ALIAS = { progressi: 'andamento/sessioni', verifiche: 'andamento/verifiche' };
 let badge = null;
 function buildNav() {
@@ -1012,6 +1039,7 @@ async function route() {
     else if (known === 'andamento') await pageAndamento(main, arg);
     else if (known === 'cerca') await pageCerca(main, new URLSearchParams(query).get('q') || '');
     else if (known === 'calendario') await pageCalendario(main);
+    else if (known === 'schede') await pageSchede(main);
     else if (known === 'obiettivi') await pageObiettivi(main);
     else if (known === 'leetcode') await pageLeetcode(main);
     else if (known === 'risorse') await pageRisorse(main);

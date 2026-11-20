@@ -734,3 +734,21 @@ test('ultima sessione: date impossibili, future e righe libere ignorate; senza r
   fs.rmSync(path.join(dir, 'progressi.md'));
   assert.strictEqual((await ov()).lastSession, null);
 });
+
+test('GET /api/schede: elenco dalla più recente, area leggibile, sola lettura', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  const get = async () => (await call('GET', '/api/schede', null, c)).json();
+  assert.deepStrictEqual((await get()).schede, [], 'senza Schede/');
+  fs.mkdirSync(path.join(dir, 'Schede'));
+  assert.deepStrictEqual((await get()).schede, [], 'cartella vuota');
+  for (const [d, a, n] of [['2026-11-01', 'algoritmi', 'uno'], ['2026-11-08', 'Sistemi', 'due'], ['2026-11-05', 'Altro tema', 'tre']]) fs.writeFileSync(path.join(dir, 'Schede', `${d} ${a} - ${n}.md`), `# Scheda <b>${n}</b>\ntesto ${n}`);
+  fs.writeFileSync(path.join(dir, 'Schede', 'senza data.md'), 'x');
+  const before = fs.readdirSync(path.join(dir, 'Schede')).sort();
+  const { schede } = await get();
+  assert.deepStrictEqual(schede.map((s) => [s.date, s.step, s.title, s.preview]), [['2026-11-08', 'due', 'Scheda <b>due</b>', 'testo due'], ['2026-11-05', 'tre', 'Scheda <b>tre</b>', 'testo tre'], ['2026-11-01', 'uno', 'Scheda <b>uno</b>', 'testo uno']]);
+  assert.strictEqual(schede[1].area, 'Altro tema');
+  assert.strictEqual(schede[0].url, null, 'senza vault nessun collegamento');
+  assert.deepStrictEqual(fs.readdirSync(path.join(dir, 'Schede')).sort(), before);
+  assert.strictEqual((await call('GET', '/api/schede', null, null)).status, 401);
+});

@@ -692,6 +692,32 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await ev('document.querySelectorAll("section.cards").length'), 0);
   await go('#/altro');
 
+  // Schede: pagina #/schede sotto «Altro», senza cartella = stato vuoto, con filtro per area (a tocchi ripetuti)
+  await go('#/schede');
+  await waitFor('!!document.querySelector("main .empty")', 'schede vuote');
+  await noOverflow('schede vuote'); await targets('schede vuote');
+  fs.mkdirSync(path.join(dir, 'Schede'), { recursive: true });
+  for (const [d, a, n] of [['2026-11-03', 'Zeta', 'Uno'], ['2026-11-09', 'Algoritmi', 'Due <i>x</i>'], ['2026-11-05', 'Zeta', 'Tre']]) fs.writeFileSync(path.join(dir, 'Schede', `${d} ${a} - ${n.replace(/[<>]/g, '')}.md`), `# Scheda ${n}\nanteprima ${n.length}`);
+  const filesBefore2 = fs.readdirSync(dir).sort();
+  await go('#/altro');
+  await waitFor('!!document.querySelector("a.row[href=\\"#/schede\\"]")', 'voce Schede in Altro');
+  await ev('document.querySelector("a.row[href=\\"#/schede\\"]").click()');
+  await waitFor('document.querySelectorAll("main section.scheda").length === 3', 'elenco schede');
+  assert.strictEqual(await ev('[...document.querySelectorAll("main section.scheda .doc-title")].map((e) => e.textContent).join("|")'), 'Scheda Due <i>x</i>|Scheda Tre|Scheda Uno');
+  assert.strictEqual(await ev('document.querySelectorAll("main section.scheda i").length'), 0);
+  assert.strictEqual(await ev('document.querySelectorAll("#nav [aria-current]").length && document.querySelector("#nav [aria-current]").textContent.includes("Altro")'), true);
+  await noOverflow('schede'); await targets('schede');
+  await ev('document.querySelector("button.filter[data-area=\\"Zeta\\"]").click(); document.querySelector("button.filter[data-area=\\"Zeta\\"]").click()');
+  await waitFor('document.querySelectorAll("main section.scheda").length === 2', 'filtro Zeta');
+  await ev('document.querySelector("button.filter[data-area=\\"Algoritmi\\"]").click()');
+  await waitFor('document.querySelectorAll("main section.scheda").length === 1', 'filtro Algoritmi');
+  await ev('document.querySelector("button.filter[data-area=\\"\\"]").click()');
+  await waitFor('document.querySelectorAll("main section.scheda").length === 3', 'filtro Tutte');
+  await noOverflow('schede filtrate'); await targets('schede filtrate');
+  assert.deepStrictEqual(fs.readdirSync(dir).sort(), filesBefore2, 'la pagina non scrive file');
+  fs.rmSync(path.join(dir, 'Schede'), { recursive: true });
+  await go('#/altro');
+
   // Altro: Esci riporta al login e nasconde il menu
   await go('#/altro');
   await waitFor('!!document.querySelector("#esci")', 'altro');
