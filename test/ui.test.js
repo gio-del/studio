@@ -633,6 +633,22 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await go('#/feedback');
   await waitFor('document.querySelector("main").innerText.includes("<script>x</script>")', 'feedback come testo');
   assert.strictEqual(await ev('document.querySelector("#sessione a").href'), 'https://example.com/sessione');
+  {
+    const segFile = path.join(dir, 'segnalazioni.md');
+    const segBak = fs.readFileSync(segFile, 'utf8');
+    fs.writeFileSync(segFile, '- 2026-11-01 08:00 | algoritmi | manca | <b>vecchia</b>\n- 2026-12-31 08:00 | algoritmi | altro | futura\n- 2026-13-45 08:00 | algoritmi | altro | impossibile\n');
+    await go('#/oggi'); await go('#/feedback');
+    await waitFor('!!document.querySelector("#attesa-avviso")', 'avviso attesa');
+    assert.match(await ev('document.querySelector("#attesa-avviso").textContent'), /Il tutor non gestisce una segnalazione da \d+ giorni/);
+    assert.strictEqual(await ev('document.querySelectorAll("main .age").length'), 2, 'età solo con data valida');
+    assert.match(await ev('document.querySelector("main .age").textContent'), /^da \d+ giorni$/);
+    await noOverflow('segnalazioni con età'); await targets('segnalazioni con età');
+    fs.writeFileSync(segFile, '- 2026-12-31 08:00 | algoritmi | altro | futura\n- 2026-13-45 08:00 | algoritmi | altro | impossibile\n');
+    await go('#/oggi'); await go('#/feedback');
+    await waitFor('document.querySelectorAll("main .age").length === 1', 'solo la futura');
+    assert.strictEqual(await ev('!!document.querySelector("#attesa-avviso")'), false, 'senza età vecchie niente avviso');
+    fs.writeFileSync(segFile, segBak);
+  }
 
   // Tema scuro: segue il telefono, niente scroll orizzontale
   const bg = () => ev('getComputedStyle(document.documentElement).backgroundColor');

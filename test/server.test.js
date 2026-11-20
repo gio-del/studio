@@ -254,6 +254,24 @@ test('service worker: stessa origine, no-cache, CSP stretta, le API non finiscon
   assert.match(await (await call('GET', '/app.js')).text(), /serviceWorker\.register\('\/sw\.js'\)/);
 });
 
+test('età delle segnalazioni aperte e dei fatto in attesa; data impossibile o futura', async (t) => {
+  const { call, login, dir } = await start(t);
+  const c = await login();
+  fs.writeFileSync(path.join(dir, 'segnalazioni.md'), [
+    '- 2026-11-01 08:00 | algoritmi | manca | vecchia',
+    '- 2026-11-08 08:00 | algoritmi | altro | ieri',
+    '- 2026-11-09 08:00 | algoritmi | altro | oggi',
+    '- 2026-12-31 08:00 | algoritmi | altro | futura',
+    '- 2026-13-45 08:00 | algoritmi | altro | impossibile',
+    '- 2026-11-02 09:00 | algoritmi | fatto | [passo: Parte 1, Settimana 1, Array e stringhe] 45 min',
+    'riga libera', ''].join('\n'));
+  const fb = await (await call('GET', '/api/feedback', null, c)).json();
+  assert.deepStrictEqual(fb.open.filter((r) => !r.raw).map((r) => r.ageDays), [8, 1, 0, 0, null, 7]);
+  assert.strictEqual(fb.open[6].ageDays, undefined, 'riga libera: nessuna età');
+  const a = await (await call('GET', '/api/area/algoritmi', null, c)).json();
+  assert.strictEqual(a.parts[0].weeks[0].steps[1].pendingAge, 7);
+});
+
 test('fatto: una riga con i minuti, mai doppia, minuti e passi non validi rifiutati, il passo risulta da verificare', async (t) => {
   const { call, login, dir } = await start(t);
   const c = await login();
