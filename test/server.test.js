@@ -66,7 +66,7 @@ test('panoramica e area: solo aree dal nome valido, link non sicuri senza url', 
   // il widget della serie: solo aggiunte, i campi esistenti restano (lun 9 nov: studio oggi, senza calendario nessun riposo)
   assert.deepStrictEqual(ov.streakWeek.days.map((d) => `${d.date}:${d.state}:${d.today}`), ['2026-11-09:studio:true', ...['10', '11', '12', '13', '14', '15'].map((n) => `2026-11-${n}:vuoto:false`)]);
   assert.strictEqual(ov.streakWeek.todayDone, true);
-  assert.deepStrictEqual(Object.keys(ov), ['date', 'week', 'streak', 'streakWeek', 'lastSession', 'missedYesterday', 'areas', 'verifyDue', 'focus', 'later', 'gapsTotal', 'firstGaps', 'schedeDaRileggere'], 'campi esistenti con lo stesso nome, uno solo in più');
+  assert.deepStrictEqual(Object.keys(ov), ['date', 'week', 'streak', 'streakWeek', 'lastSession', 'missedYesterday', 'areas', 'verifyDue', 'focus', 'later', 'gapsTotal', 'firstGaps', 'schedeDaRileggere', 'session'], 'campi esistenti con lo stesso nome, uno solo in più');
   assert.deepStrictEqual(ov.lastSession, { date: '2026-11-09', area: 'sistemi', days: 0 }, 'riga più recente (a parità di data l\'ultima del file)');
   const algo = ov.areas[0];
   assert.deepStrictEqual([algo.done, algo.total, algo.week, algo.next.text], [1, 5, 1, 'Array e stringhe']);

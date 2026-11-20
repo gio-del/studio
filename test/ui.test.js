@@ -143,7 +143,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   assert.strictEqual(await sw('.streak-n'), '2');
   assert.strictEqual(await ev('document.querySelectorAll(".streak-week li.oggi").length'), 1);
   assert.match(await ev('document.querySelector(".streak-week li.oggi").getAttribute("aria-label")'), /\(oggi\): studio$/);
-  assert.strictEqual(await ev('[...document.querySelectorAll(".streak-week li")].every((li) => /^(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica) \d+( \(oggi\))?: (studio|riposo|nessuno studio)$/.test(li.getAttribute("aria-label")))'), true, 'etichetta accessibile per ogni giorno');
+  assert.strictEqual(await ev('[...document.querySelectorAll(".streak-week li")].every((li) => /^(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica) \\d+( \\(oggi\\))?: (studio|riposo|nessuno studio)$/.test(li.getAttribute("aria-label")))'), true, 'etichetta accessibile per ogni giorno');
   assert.strictEqual(await ev('document.querySelectorAll(".streak-week .riposo").length > 0'), true, 'calendario con soli lun, mer e dom: gli altri giorni sono di riposo');
   assert.strictEqual(await ev('document.querySelectorAll(".streak *:not(svg):not(path)").length > 0 && document.querySelectorAll(".streak b, .streak img").length'), 0);
   await noOverflow('widget della serie'); await targets('widget della serie');
