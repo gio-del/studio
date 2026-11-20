@@ -280,6 +280,13 @@ test('weakAreas: ordine per punteggio, aree senza storico escluse, al massimo 5'
   assert.deepStrictEqual(P.weakAreas([]), []);
 });
 
+test('ageDays su una riga di segnalazioni: la data in testa basta', () => {
+  const today = Date.UTC(2026, 10, 20);
+  const [r, bad] = P.parseReports('- 2026-11-13 09:30 | a | altro | x\n- 2026-02-31 09:30 | a | altro | y');
+  assert.strictEqual(P.ageDays(r.date, today), 7);
+  assert.strictEqual(P.ageDays(bad.date, today), null);
+});
+
 test('ageDays: giorni da una data, null se impossibile, 0 se futura', () => {
   const today = Date.UTC(2026, 10, 16);
   assert.strictEqual(P.ageDays('2026-11-16', today), 0);
