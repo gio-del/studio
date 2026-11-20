@@ -174,6 +174,7 @@ function createServer({ config, now = Date.now }) {
       return send(res, 200, await data.calendar(n));
     }
     if (p === '/api/obiettivi') return send(res, 200, await data.goals());
+    if (p === '/api/schede') return send(res, 200, { schede: await data.schede() });
     if (p === '/api/resources') return send(res, 200, await data.resources());
     if (p === '/api/verifiche') return send(res, 200, { rows: await data.verifiche(), titles: await data.titles() });
     if (p === '/api/lacune') return send(res, 200, { ...(await data.gaps()), titles: await data.titles() });
