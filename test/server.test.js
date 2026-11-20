@@ -113,6 +113,22 @@ test('statistiche: ore per settimana, per area, verifiche superate', async (t) =
   assert.deepStrictEqual(st.leetcode, [0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
+test('statistiche: record di serie e settimana migliore', async (t) => {
+  const { call, login, dir } = await start(t); // oggi lun 2026-11-09
+  const c = await login();
+  const rec = async () => (await (await call('GET', '/api/stats', null, c)).json()).records;
+  fs.writeFileSync(path.join(dir, 'calendario.md'), '- algoritmi | lun,mar,mer,gio,ven | 09:00 | 60\n');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), '- 2026-11-09 | algoritmi | a | ok | 30 min\n');
+  assert.strictEqual(await rec(), null, 'un solo giorno: niente record');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), [
+    '- 2026-10-26 | algoritmi | a | ok | 30 min', '- 2026-10-27 | algoritmi | a | ok | 30 min', '- 2026-10-28 | algoritmi | a | ok | 30 min',
+    '- 2026-10-30 | algoritmi | a | ok | 200 min', '- 2026-11-02 | algoritmi | a | ok | 30 min', '- 2026-11-03 | algoritmi | a | ok | 30 min', // ven 30 ott -> lun 2 nov: il fine settimana è riposo; due serie da 3, vale la più recente
+    '- 2026-11-31 | algoritmi | a | ok | 999 min', '- 2026-11-20 | algoritmi | a | ok | 999 min', '- 2026-11-05 | algoritmi | a | ok', ''].join('\n'));
+  assert.deepStrictEqual(await rec(), { streak: { days: 3, from: '2026-10-30', to: '2026-11-03' }, bestWeek: { start: '2026-10-26', minutes: 290 } });
+  const ov = await (await call('GET', '/api/overview', null, c)).json();
+  assert.ok(ov.streak <= (await rec()).streak.days, 'la serie corrente non supera il record');
+});
+
 test('segnala: scrive una riga sola, la rilegge, rifiuta il resto', async (t) => {
   const { call, login, dir } = await start(t);
   const c = await login();

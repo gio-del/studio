@@ -180,6 +180,22 @@ test('serie di giorni di studio: vuota, oggi mancante, giorno vuoto, riposo del 
   assert.strictEqual(P.streak([r('2026-11-10', 5), r('2026-11-08', 5)], [], '2026-11-10'), 1, 'senza calendario nessun riposo');
 });
 
+test('serie: tutte le serie e record, la corrente non supera mai il migliore', () => {
+  const r = (date, minutes) => ({ date, minutes });
+  const cal = P.parseCalendar('- a | lun,mar,mer,gio,ven | 09:00 | 60\n');
+  const rows = [r('2026-11-02', 10), r('2026-11-03', 10), r('2026-11-04', 10), r('2026-11-06', 10), r('2026-11-09', 10), r('2026-11-10', 10), r('2026-11-13', 10)];
+  const s = P.streaks(rows, cal, '2026-11-10');
+  assert.deepStrictEqual(s.runs, [{ days: 3, from: '2026-11-02', to: '2026-11-04' }, { days: 3, from: '2026-11-06', to: '2026-11-10' }], 'gio 5 vuoto interrompe, sab e dom di riposo no; la riga futura non conta');
+  assert.strictEqual(s.current, 3);
+  assert.strictEqual(P.streaks(rows, cal, '2026-11-10').current, P.streak(rows, cal, '2026-11-10'));
+  for (const today of ['2026-11-02', '2026-11-05', '2026-11-08', '2026-11-10', '2026-11-12', '2026-11-20']) {
+    const x = P.streaks(rows, cal, today);
+    assert.ok(x.current <= Math.max(0, ...x.runs.map((q) => q.days)), today);
+  }
+  assert.deepStrictEqual(P.streaks([], cal, '2026-11-10'), { runs: [], current: 0 });
+  assert.deepStrictEqual(P.streaks([r('2026-11-12', 10)], cal, '2026-11-10').runs, [], 'solo date future');
+});
+
 test('introduzione: righe ripulite dai simboli Markdown, mai tagliate a metà parola', () => {
   const g = P.parseProgram('# Titolo\n\nObiettivo: capire **Raft** e [Paxos](https://e.com/p)\n\n- Metodo: leggere, poi rifare\n> Ritmo: 3 sessioni\n## Parte 1: a\n### Settimana 1\n- [ ] x\n');
   assert.strictEqual(g.intro, 'Obiettivo: capire Raft e Paxos');
