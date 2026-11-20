@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Studio</string>
+    <string name="setup_title">Indirizzo del server</string>
+    <string name="setup_hint">https://…</string>
+    <string name="setup_save">Continua</string>
+    <string name="setup_checking">Controllo…</string>
+    <string name="menu_change">Cambia indirizzo</string>
+    <string name="error_title">Non riesco a raggiungere il server</string>
+    <string name="error_text">Controlla la connessione e riprova.</string>
+    <string name="retry">Riprova</string>
+    <string name="err_empty">Scrivi l\'indirizzo del server.</string>
+    <string name="err_scheme">L\'indirizzo deve iniziare con https://</string>
+    <string name="err_invalid">Indirizzo non valido.</string>
+    <string name="err_unreachable">Il server non risponde a questo indirizzo.</string>
+</resources>

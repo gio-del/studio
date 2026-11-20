@@ -2,6 +2,7 @@
 # CI del Project (contratto ./ci [sezione…], nessun argomento = tutto): nessun segreto, nessuna rete,
 # esce al primo controllo fallito.
 #   backend   sintassi e test (parser, server, sicurezza, interfaccia se c'è Chromium)
+#   android   test JVM e APK di debug di android/ (salta, scrivendolo, senza SDK Android: gira in GitHub Actions)
 set -eu
 cd "$(dirname "$0")"
 
@@ -12,10 +13,18 @@ backend() {
 	node --test test/*.test.js
 }
 
-[ $# -gt 0 ] || set -- backend
+android() {
+	if [ -z "${ANDROID_HOME:-}${ANDROID_SDK_ROOT:-}" ] || ! command -v gradle >/dev/null 2>&1; then
+		echo "android: SALTATO (nessun SDK Android o gradle su questa macchina; la build gira in GitHub Actions)"
+		return 0
+	fi
+	(cd android && gradle --no-daemon testDebugUnitTest assembleDebug)
+}
+
+[ $# -gt 0 ] || set -- backend android
 for section in "$@"; do
 	case $section in
-	backend) echo "== ./ci $section" && "$section" ;;
-	*) echo "./ci: sezione sconosciuta '$section' (backend)" >&2 && exit 2 ;;
+	backend | android) echo "== ./ci $section" && "$section" ;;
+	*) echo "./ci: sezione sconosciuta '$section' (backend, android)" >&2 && exit 2 ;;
 	esac
 done
