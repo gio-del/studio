@@ -109,7 +109,8 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await ev('route().then(() => true)');
   await waitFor('!!document.querySelector("section.hero")', 'Oggi di nuovo');
   assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 0, 'l\'invito non torna');
-  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 hGiorni di studio di fila: \d+/);
+  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 h/);
+  assert.strictEqual(await ev('document.body.innerText.includes("Giorni di studio di fila")'), false, 'la riga di testo è sostituita dal widget');
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
   // ultima sessione: nella fixture è del 9 nov (da più di 4 giorni): avviso; con una sessione di 5 giorni fa o senza sessioni
   assert.match(await ev('document.querySelector(".weekline [data-last-session]").textContent'), /^Nessuna sessione da \d+ giorni$/);
@@ -128,6 +129,29 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   fs.writeFileSync(path.join(dir, 'progressi.md'), 'solo testo\n');
   await oggiRoute();
   assert.strictEqual(await ev('document.querySelectorAll(".weekline [data-last-session]").length'), 0, 'senza sessioni niente riga');
+  // widget della serie: fiamma spenta con serie 0, accesa con studio oggi, settimana con riposo, nessun HTML dal file
+  const sw = (q) => ev(`document.querySelector(".streak ${q}").textContent`);
+  assert.strictEqual(await ev('document.querySelector(".streak").getAttribute("data-flame")'), 'off');
+  assert.strictEqual(await sw('.streak-n'), '0');
+  assert.strictEqual(await sw('.streak-u'), 'giorni di fila');
+  assert.strictEqual(await sw('.streak-msg'), 'Inizia una nuova serie oggi');
+  assert.strictEqual(await ev('document.querySelectorAll(".streak-week li").length'), 7);
+  assert.strictEqual(await ev('[...document.querySelectorAll(".streak-week .sl")].map((e) => e.textContent).join("")'), 'LMMGVSD');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${ymd(0)} | sistemi | <b>x</b> | ok | nessuna | 20 min\n- ${ymd(1)} | sistemi | x | ok | nessuna | 20 min\n`);
+  await oggiRoute();
+  assert.strictEqual(await ev('document.querySelector(".streak").getAttribute("data-flame")'), 'on');
+  assert.strictEqual(await sw('.streak-n'), '2');
+  assert.strictEqual(await ev('document.querySelectorAll(".streak-week li.oggi").length'), 1);
+  assert.match(await ev('document.querySelector(".streak-week li.oggi").getAttribute("aria-label")'), /\(oggi\): studio$/);
+  assert.strictEqual(await ev('[...document.querySelectorAll(".streak-week li")].every((li) => /^(lunedì|martedì|mercoledì|giovedì|venerdì|sabato|domenica) \\d+( \\(oggi\\))?: (studio|riposo|nessuno studio)$/.test(li.getAttribute("aria-label")))'), true, 'etichetta accessibile per ogni giorno');
+  assert.strictEqual(await ev('document.querySelectorAll(".streak-week .riposo").length > 0'), true, 'calendario con soli lun, mer e dom: gli altri giorni sono di riposo');
+  assert.strictEqual(await ev('document.querySelectorAll(".streak *:not(svg):not(path)").length > 0 && document.querySelectorAll(".streak b, .streak img").length'), 0);
+  await noOverflow('widget della serie'); await targets('widget della serie');
+  fs.writeFileSync(path.join(dir, 'progressi.md'), `- ${ymd(1)} | sistemi | x | ok | nessuna | 20 min\n`);
+  await oggiRoute();
+  assert.strictEqual(await ev('document.querySelector(".streak").getAttribute("data-flame")'), 'off');
+  assert.strictEqual(await sw('.streak-msg'), 'Studia oggi per non perdere la serie');
+  assert.strictEqual(await sw('.streak-u'), 'giorno di fila');
   fs.writeFileSync(path.join(dir, 'progressi.md'), prog);
   await oggiRoute();
   assert.strictEqual(await ev('document.querySelectorAll(".weekline a, .weekline button, .weekline img").length'), 0);

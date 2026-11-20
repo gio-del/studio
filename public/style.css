@@ -104,6 +104,23 @@ label { display: block; margin: var(--s3) 0 var(--s1); font-weight: 650; font-si
 .btn:active, .row:active, button.step:active, summary:active { background: var(--surface-2); }
 .btn:not(.ghost):not(.quiet):active { filter: brightness(.94); }
 
+/* Serie di giorni di studio (Oggi) */
+.streak { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-card); padding: var(--s4); margin: 0 0 var(--s3); box-shadow: var(--shadow); }
+.streak-top { display: flex; align-items: center; gap: var(--s3); }
+.streak .flame { width: 48px; height: 48px; flex: none; fill: var(--accent); stroke: var(--accent-ink); stroke-width: 1.5; }
+.streak.off .flame { fill: var(--surface-2); stroke: var(--edge); }
+.streak-n { font-size: 2.5rem; font-weight: 800; line-height: 1; margin-right: var(--s2); }
+.streak-u { font-weight: 600; color: var(--muted); }
+.streak-week { list-style: none; display: flex; justify-content: space-between; gap: var(--s1); margin: var(--s3) 0 var(--s2); padding: 0; }
+.sd { display: flex; flex-direction: column; align-items: center; gap: var(--s1); flex: 1; min-width: 0; }
+.sd .sl { font-size: .8125rem; font-weight: 600; color: var(--muted); }
+.sd .sm { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--r-pill); border: 2px solid var(--edge); font-weight: 800; line-height: 1; color: var(--muted); }
+.sd.studio .sm { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.sd.riposo .sm { border-style: dashed; background: var(--surface-2); }
+.sd.oggi .sl { color: var(--primary); }
+.sd.oggi .sm { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary); }
+.streak-msg { margin: 0; font-weight: 600; }
+
 /* Avanzamento, etichette */
 .weekline { margin: 0 0 var(--s3); }
 .weekline .bar { margin: var(--s1) 0; }
