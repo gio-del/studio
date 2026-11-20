@@ -573,7 +573,7 @@ async function pageComeFunziona(main) {
     sec('fatto', 'Dopo «Fatto»', 'Il passo resta «da verificare»: alla sessione successiva il tutor ti fa qualche domanda e lo chiude. Intanto l’app ti propone il passo dopo.'),
     sec('tutor', 'Il tutor', 'È l’assistente che scrive e corregge il programma, in una sessione a parte. «Chiedi al tutor» copia il passo e apre la sessione: incolla e scrivi la domanda.', t),
     sec('nota', 'Le note', '«Nuova nota», dentro un passo, apre Obsidian con la nota già pronta: una per passo, nella cartella Studio/Note. Il tutor le legge ma non le cambia.'),
-    sec('ripasso', 'Ripasso', 'Quello che in una verifica non sai ancora diventa una lacuna, cioè una cosa da rivedere. Resta in «Ripasso» finché la ripassi e tocchi «Ripassata».', go('#/ripasso', 'Apri il ripasso')),
+    sec('ripasso', 'Ripasso', 'Quello che in una verifica non sai ancora diventa una lacuna, cioè una cosa da rivedere. Resta in «Ripasso» finché la ripassi e tocchi «Ripassata». Con almeno 2 lacune, «Ripassa a turno» le mostra una alla volta.', go('#/ripasso', 'Apri il ripasso')),
     sec('segnala', 'Quando qualcosa non va', '«Segnala un problema» è per un passo poco chiaro o una risorsa sbagliata: il tutor lo legge alla prossima sessione e sistema il programma. Per una domanda subito c’è «Chiedi al tutor».'),
     sec('programma', 'Programma e Andamento', '«Programma» è tutto il percorso, area per area. «Andamento» mostra le ore, le sessioni e le verifiche.', go('#/programma', 'Apri il programma')));
 }
@@ -661,7 +661,7 @@ async function pageRipasso(main, onlyArea = '') {
   const wtitle = h('h2', { hidden: '' }, 'In attesa del tutor');
   const same = (g, x) => g.area === x.area && g.text === x.text && g.date === x.date;
   const byDate = (a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-  const draw = () => {
+  let draw = () => {
     open.replaceChildren(); wait.replaceChildren();
     for (const g of openL) if (!sel || g.area === sel) {
       const card = gapCard(g, titles, () => { waitL.push(g); openL = openL.filter((x) => !same(x, g)); draw(); toast('Segnato: il tutor chiude la lacuna alla prossima sessione'); });
@@ -682,7 +682,41 @@ async function pageRipasso(main, onlyArea = '') {
     }
     main.append(bar);
   }
-  main.append(open, wtitle, wait);
+  // «Ripassa a turno»: una lacuna alla volta, la più vecchia per prima; «Ripassata» usa lo stesso gestore e lo stesso invio.
+  const turn = h('div', { class: 'turn', hidden: '' });
+  const startBtn = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'turno' }, icon('ripasso'), 'Ripassa a turno');
+  const body = h('div', { class: 'ripbody' }, open, wtitle, wait);
+  const updateStart = () => { startBtn.hidden = openL.filter((g) => !sel || g.area === sel).length < 2; };
+  const endTurn = () => { turn.hidden = true; turn.replaceChildren(); body.hidden = false; bar.hidden = false; startBtn.parentElement.hidden = false; draw(); updateStart(); };
+  startBtn.addEventListener('click', () => {
+    const queue = openL.filter((g) => !sel || g.area === sel).sort(byDate);
+    const total = queue.length;
+    let done = 0;
+    body.hidden = true; bar.hidden = true; startBtn.parentElement.hidden = true; turn.hidden = false;
+    const show = () => {
+      turn.replaceChildren();
+      if (!queue.length) {
+        turn.append(h('div', { class: 'card summary', role: 'status' }, h('p', { class: 'what' }, `Ripassate ${done} di ${total}`)),
+          h('div', { class: 'actions' }, h('button', { class: 'btn', type: 'button', 'data-act': 'fine' }, 'Fine')));
+        turn.querySelector('[data-act="fine"]').addEventListener('click', endTurn);
+        return;
+      }
+      const g = queue[0];
+      const card = gapCard(g, titles, () => {
+        done++; queue.shift(); waitL.push(g); openL = openL.filter((x) => !same(x, g)); setBadge(openL.length + rest); show();
+      });
+      const dopo = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'dopo' }, 'Dopo');
+      dopo.addEventListener('click', () => { queue.push(queue.shift()); show(); });
+      const esci = h('button', { class: 'btn ghost', type: 'button', 'data-act': 'esci' }, 'Esci');
+      esci.addEventListener('click', endTurn);
+      card.querySelector('.actions').append(dopo, esci);
+      turn.append(h('p', { class: 'small muted', role: 'status' }, `Lacuna ${done + 1} di ${total}`), card);
+    };
+    show();
+  });
+  main.append(h('div', { class: 'turnstart' }, startBtn), turn, body);
+  const baseDraw = draw;
+  draw = () => { baseDraw(); updateStart(); };
   draw();
 }
 
