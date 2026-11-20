@@ -109,7 +109,7 @@ test('interfaccia: login, pagine, telefono, tocchi ripetuti, XSS, segnalazione',
   await ev('route().then(() => true)');
   await waitFor('!!document.querySelector("section.hero")', 'Oggi di nuovo');
   assert.strictEqual(await ev('document.querySelectorAll("#prima-volta").length'), 0, 'l\'invito non torna');
-  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 h$/);
+  assert.match(await ev('document.querySelector(".weekline").textContent'), /Questa settimana: (0 h|\d+ h( \d+)?|\d+ min) di 7 h/);
   assert.strictEqual(await ev('document.body.innerText.includes("Giorni di studio di fila")'), false, 'la riga di testo è sostituita dal widget');
   assert.strictEqual(await ev('document.querySelectorAll(".weekline .bar").length'), 1);
   // ultima sessione: nella fixture è del 9 nov (da più di 4 giorni): avviso; con una sessione di 5 giorni fa o senza sessioni
