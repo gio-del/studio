@@ -20,4 +20,4 @@ jobs:
           gradle-version: 8.10.2
       - name: Test e APK di debug
         working-directory: android
-        run: gradle --no-daemon testDebugUnitTest assembleDebug
+        run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug

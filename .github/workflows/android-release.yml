@@ -38,7 +38,7 @@ jobs:
           export ANDROID_KEYSTORE_PATH="$RUNNER_TEMP/release.jks"
           export ANDROID_VERSION_NAME="${REF_NAME#android-v}"
           export ANDROID_VERSION_CODE="${{ github.run_number }}"
-          gradle --no-daemon assembleRelease
+          gradle --no-daemon --stacktrace assembleRelease
           cp app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/studio.apk"
       - name: Release
         env:
