@@ -11,7 +11,7 @@ class InsetPaddingTest {
 
     @Test fun topAlreadyCoveredByActionBarIsNotCountedTwice() {
         assertArrayEquals(intArrayOf(0, 0, 0, 60),
-            InsetPadding.compute(0, 100, 0, 60, 0, 168, 1080, 2172, 1080, 2400))
+            InsetPadding.compute(0, 100, 0, 60, 0, 168, 1080, 2232, 1080, 2400))
     }
 
     @Test fun partialOverlapOnlyAddsMissingPart() {
