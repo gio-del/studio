@@ -24,3 +24,46 @@ jobs:
       - name: Test e APK di debug
         working-directory: android
         run: gradle --no-daemon --stacktrace testDebugUnitTest assembleDebug
+  insets:
+    # Emulatore Android 15: la pagina sta fuori dalle barre di sistema, con gesti e con tre tasti;
+    # gli screenshot (chiaro e scuro) restano negli artefatti.
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        nav: [gestural, threebutton]
+        theme: [no, yes]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.10.2
+      - name: Emulatore API 35 e test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            adb shell cmd overlay enable com.android.internal.systemui.navbar.${{ matrix.nav }}
+            adb shell "cmd uimode night ${{ matrix.theme }}"
+            cd android && gradle --no-daemon --stacktrace connectedDebugAndroidTest || STATUS=$?
+            mkdir -p ../shots
+            adb pull /sdcard/Android/data/app.studio.shell/files/shots ../shots || true
+            exit ${STATUS:-0}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: insets-${{ matrix.nav }}-${{ matrix.theme == 'yes' && 'scuro' || 'chiaro' }}
+          path: shots

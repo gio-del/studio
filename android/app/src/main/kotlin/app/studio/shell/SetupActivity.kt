@@ -43,6 +43,7 @@ class SetupActivity : AppCompatActivity() {
         root.addView(status)
         root.addView(button)
         setContentView(root)
+        InsetPadding.install(this, root)
     }
 
     private fun submit() {

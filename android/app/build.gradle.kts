@@ -12,6 +12,7 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "1").toInt()
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         versionName = System.getenv("ANDROID_VERSION_NAME") ?: "0.1"
     }
 
@@ -45,4 +46,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
 }

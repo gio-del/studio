@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="shell_bg">#1F2328</color>
     <color name="widget_bg">#1F2328</color>
     <color name="widget_text">#F0F3F6</color>
     <color name="widget_muted">#B1BAC4</color>
