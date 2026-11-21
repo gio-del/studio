@@ -40,6 +40,7 @@ class MainActivity : AppCompatActivity() {
         errorView = buildErrorView()
         errorView.visibility = View.GONE
         setContentView(container)
+        InsetPadding.install(this, container)
         pendingToday = intent?.getBooleanExtra(EXTRA_TODAY, false) == true
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() {

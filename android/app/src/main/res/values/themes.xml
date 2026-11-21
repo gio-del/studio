@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Studio" parent="Theme.AppCompat.DayNight.DarkActionBar" />
+    <style name="Theme.Studio" parent="Theme.AppCompat.DayNight.DarkActionBar">
+        <item name="android:windowBackground">@color/shell_bg</item>
+    </style>
 </resources>
